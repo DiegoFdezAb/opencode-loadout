@@ -1,0 +1,19 @@
+{
+  "$schema": "../schema/preset.schema.json",
+  "name": "orchestra",
+  "description": "Open Orchestra multi-agent hub-and-spoke orchestration system",
+  "plugins": ["opencode-orchestrator"],
+  "requires": {
+    "opencode-orchestrator": "latest"
+  },
+  "config": {
+    "opencode": {
+      "plugin": ["opencode-orchestrator"]
+    },
+    "orchestra": {
+      "autoSpawn": true,
+      "workers": ["vision", "docs", "coder", "architect"],
+      "defaultProfile": "coder"
+    }
+  }
+}

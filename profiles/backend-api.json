@@ -1,0 +1,26 @@
+{
+  "$schema": "../schema/profile.schema.json",
+  "name": "backend-api",
+  "description": "Optimized for backend API development - Claude for implementation, GPT for architecture",
+  "omo": {
+    "agents": {
+      "Sisyphus": {
+        "model": "anthropic/claude-opus-4-5",
+        "temperature": 0.5
+      },
+      "oracle": {
+        "model": "openai/gpt-5.2",
+        "temperature": 0.3,
+        "description": "System design and API architecture"
+      },
+      "librarian": {
+        "model": "anthropic/claude-sonnet-4-5",
+        "temperature": 0.4,
+        "description": "API documentation and implementation research"
+      }
+    },
+    "disabled_agents": ["frontend-ui-ux-engineer", "multimodal-looker", "document-writer"],
+    "disabled_hooks": [],
+    "disabled_mcps": []
+  }
+}

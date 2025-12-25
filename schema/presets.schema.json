@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenCode Presets Configuration",
+  "description": "Main configuration for OpenCode Presets",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "defaultPreset": {
+      "type": "string",
+      "description": "Default preset to use"
+    },
+    "autoBackup": {
+      "type": "boolean",
+      "description": "Automatically backup before switching presets",
+      "default": true
+    },
+    "backupDir": {
+      "type": "string",
+      "description": "Directory to store backups"
+    },
+    "opencodeConfigPath": {
+      "type": "string",
+      "description": "Path to OpenCode config file"
+    },
+    "plugins": {
+      "type": "object",
+      "description": "Plugin-specific configurations",
+      "properties": {
+        "oh-my-opencode": {
+          "type": "object",
+          "properties": {
+            "installCmd": {
+              "type": "string"
+            },
+            "configPath": {
+              "type": "string"
+            },
+            "projectConfigPath": {
+              "type": "string"
+            }
+          }
+        },
+        "opencode-orchestrator": {
+          "type": "object",
+          "properties": {
+            "installCmd": {
+              "type": "string"
+            },
+            "configPath": {
+              "type": "string"
+            },
+            "projectConfigPath": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

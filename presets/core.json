@@ -1,0 +1,12 @@
+{
+  "$schema": "../schema/preset.schema.json",
+  "name": "core",
+  "description": "Vanilla OpenCode with default build/plan agents (no plugins)",
+  "plugins": [],
+  "requires": {},
+  "config": {
+    "opencode": {
+      "plugin": []
+    }
+  }
+}

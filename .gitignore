@@ -1,0 +1,9 @@
+# Backups
+backups/*.json
+
+# User configs
+*.local.json
+
+# OS files
+.DS_Store
+Thumbs.db

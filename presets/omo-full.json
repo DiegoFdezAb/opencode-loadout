@@ -1,0 +1,57 @@
+{
+  "$schema": "../schema/preset.schema.json",
+  "name": "omo-full",
+  "description": "Oh-My-OpenCode with all agents, features, and optimizations enabled",
+  "plugins": ["oh-my-opencode"],
+  "requires": {
+    "oh-my-opencode": "latest"
+  },
+  "config": {
+    "opencode": {
+      "plugin": ["oh-my-opencode"]
+    },
+    "omo": {
+      "sisyphus_agent": {
+        "disabled": false,
+        "builder_enabled": true,
+        "planner_enabled": true,
+        "replace_build": false,
+        "replace_plan": true
+      },
+      "agents": {
+        "Sisyphus": {
+          "model": "anthropic/claude-opus-4-5",
+          "temperature": 0.7
+        },
+        "oracle": {
+          "model": "openai/gpt-5.2",
+          "temperature": 0.5
+        },
+        "librarian": {
+          "model": "anthropic/claude-sonnet-4-5",
+          "temperature": 0.3
+        },
+        "explore": {
+          "model": "opencode/grok-code",
+          "temperature": 0.2
+        },
+        "frontend-ui-ux-engineer": {
+          "model": "google/gemini-3-pro-high",
+          "temperature": 0.8
+        },
+        "document-writer": {
+          "model": "google/gemini-3-flash",
+          "temperature": 0.6
+        },
+        "multimodal-looker": {
+          "model": "google/gemini-3-flash",
+          "temperature": 0.4
+        }
+      },
+      "disabled_agents": [],
+      "disabled_hooks": [],
+      "disabled_mcps": [],
+      "google_auth": true
+    }
+  }
+}

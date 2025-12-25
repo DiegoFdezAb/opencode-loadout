@@ -1,0 +1,26 @@
+{
+  "$schema": "../schema/preset.schema.json",
+  "name": "omo-orchestra",
+  "description": "EXPERIMENTAL - Combined Oh-My-OpenCode + Open Orchestra for maximum orchestration",
+  "plugins": ["oh-my-opencode", "opencode-orchestrator"],
+  "requires": {
+    "oh-my-opencode": "latest",
+    "opencode-orchestrator": "latest"
+  },
+  "config": {
+    "opencode": {
+      "plugin": ["oh-my-opencode", "opencode-orchestrator"]
+    },
+    "omo": {
+      "sisyphus_agent": {
+        "disabled": false,
+        "builder_enabled": true,
+        "planner_enabled": true
+      }
+    },
+    "orchestra": {
+      "autoSpawn": false,
+      "workers": ["vision", "docs", "coder"]
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "$schema": "../schema/profile.schema.json",
+  "name": "research-mode",
+  "description": "Deep research and codebase exploration - emphasizes librarian and explore agents",
+  "omo": {
+    "agents": {
+      "Sisyphus": {
+        "model": "anthropic/claude-opus-4-5",
+        "temperature": 0.5
+      },
+      "librarian": {
+        "model": "anthropic/claude-sonnet-4-5",
+        "temperature": 0.3,
+        "description": "Multi-repo analysis and official docs"
+      },
+      "explore": {
+        "model": "opencode/grok-code",
+        "temperature": 0.2,
+        "description": "Blazing fast codebase exploration"
+      },
+      "oracle": {
+        "model": "openai/gpt-5.2",
+        "temperature": 0.4
+      }
+    },
+    "disabled_agents": ["frontend-ui-ux-engineer", "multimodal-looker", "document-writer"],
+    "disabled_hooks": [],
+    "disabled_mcps": ["grep_app"]
+  }
+}

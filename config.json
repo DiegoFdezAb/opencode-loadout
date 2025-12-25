@@ -1,0 +1,19 @@
+{
+  "$schema": "./schema/presets.schema.json",
+  "defaultPreset": "core",
+  "autoBackup": true,
+  "backupDir": "~/.opencode-presets/backups",
+  "opencodeConfigPath": "~/.config/opencode/opencode.json",
+  "plugins": {
+    "oh-my-opencode": {
+      "installCmd": "bunx oh-my-opencode install",
+      "configPath": "~/.config/opencode/oh-my-opencode.json",
+      "projectConfigPath": ".opencode/oh-my-opencode.json"
+    },
+    "opencode-orchestrator": {
+      "installCmd": "bun add opencode-orchestrator",
+      "configPath": "~/.config/opencode/opencode.json",
+      "projectConfigPath": ".opencode/orchestrator.json"
+    }
+  }
+}
