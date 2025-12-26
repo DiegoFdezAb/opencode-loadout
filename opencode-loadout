@@ -9,11 +9,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Default paths
-CONFIG_FILE="${OPENCODE_LOADOUT_CONFIG:-$HOME/.opencode-loadout/config.json}"
-PRESETS_DIR="${OPENCODE_LOADOUT_DIR:-$HOME/.opencode-loadout/presets}"
-PROFILES_DIR="${OPENCODE_PROFILES_DIR:-$HOME/.opencode-loadout/profiles}"
-BACKUPS_DIR="${OPENCODE_BACKUPS_DIR:-$HOME/.opencode-loadout/backups}"
+CONFIG_FILE="${OPENCODE_LOADOUT_CONFIG:-$HOME/dev/opencode-loadout/config.json}"
+PRESETS_DIR="${OPENCODE_LOADOUT_DIR:-$HOME/dev/opencode-loadout/presets}"
+PROFILES_DIR="${OPENCODE_PROFILES_DIR:-$HOME/dev/opencode-loadout/profiles}"
+BACKUPS_DIR="${OPENCODE_BACKUPS_DIR:-$HOME/dev/opencode-loadout/backups}"
 OPENCODE_CONFIG="${OPENCODE_CONFIG_PATH:-$HOME/.config/opencode/opencode.json}"
+STATE_FILE="${OPENCODE_LOADOUT_STATE:-$HOME/dev/opencode-loadout/.state}"
 
 # Colors
 RED='\033[0;31m'
@@ -48,6 +49,28 @@ command_exists() {
 ensure_dirs() {
   mkdir -p "$PRESETS_DIR" "$PROFILES_DIR" "$BACKUPS_DIR"
   mkdir -p "$(dirname "$CONFIG_FILE")"
+  mkdir -p "$(dirname "$STATE_FILE")"
+}
+
+# Initialize state file
+init_state() {
+  if [[ ! -f "$STATE_FILE" ]]; then
+    echo '{"current_preset": "none"}' > "$STATE_FILE"
+  fi
+}
+
+# Get current preset from state
+get_state_preset() {
+  init_state
+  jq -r '.current_preset' "$STATE_FILE" 2>/dev/null || echo "none"
+}
+
+# Set current preset in state
+set_state_preset() {
+  local preset_name="$1"
+  init_state
+  jq --arg preset "$preset_name" '.current_preset = $preset' "$STATE_FILE" > "${STATE_FILE}.tmp"
+  mv "${STATE_FILE}.tmp" "$STATE_FILE"
 }
 
 # Check if OpenCode is installed
@@ -97,7 +120,7 @@ get_plugin_install_cmd() {
 }
 
 # Backup current config
-backup_config() {
+backup_config_if_changed() {
   local timestamp
   timestamp=$(date +%Y%m%d_%H%M%S)
   local backup_file="$BACKUPS_DIR/backup-$timestamp.json"
@@ -137,23 +160,35 @@ list_presets() {
 
 # Get current preset
 get_current_preset() {
-  if [[ ! -f "$OPENCODE_CONFIG" ]]; then
-    echo "none"
-    return
+  local state_preset
+  state_preset=$(get_state_preset)
+  
+  # Validate that the state preset matches the actual config
+  if [[ "$state_preset" != "none" ]]; then
+    local preset_file="$PRESETS_DIR/${state_preset}.json"
+    if [[ -f "$preset_file" ]]; then
+      # Get plugins from preset file
+      local preset_plugins
+      preset_plugins=$(jq -c '.plugins // []' "$preset_file")
+      
+      # Get plugins from actual config
+      local actual_plugins="[]"
+      if [[ -f "$OPENCODE_CONFIG" ]]; then
+        actual_plugins=$(jq -c '.plugin // []' "$OPENCODE_CONFIG")
+      fi
+      
+      # Compare
+      if [[ "$preset_plugins" != "$actual_plugins" ]]; then
+        # Config doesn't match - reset to none
+        log_warn "State preset ($state_preset) doesn't match actual config - resetting to none"
+        set_state_preset "none"
+        echo "none"
+        return
+      fi
+    fi
   fi
-
-  local plugins
-  plugins=$(jq -r '.plugin // []' "$OPENCODE_CONFIG" 2>/dev/null)
-
-  if [[ "$plugins" == "[]" ]] || [[ -z "$plugins" ]]; then
-    echo "core"
-  elif echo "$plugins" | grep -q "oh-my-opencode"; then
-    echo "omo"
-  elif echo "$plugins" | grep -q "opencode-orchestrator"; then
-    echo "orchestra"
-  else
-    echo "custom"
-  fi
+  
+  echo "$state_preset"
 }
 
 # Show current preset
@@ -180,16 +215,35 @@ switch() {
 
   # Check if preset exists
   local preset_file="$PRESETS_DIR/${preset_name}.json"
+  local current_preset
+  current_preset=$(get_state_preset)
+
   if [[ ! -f "$preset_file" ]]; then
-    log_error "Preset not found: $preset_name"
-    log_info "Run 'opencode-loadout list' or 'ocl list' to see available presets"
-    exit 1
+    # If at "none" and trying to switch to non-existent preset, offer to save first
+    if [[ "$current_preset" == "none" ]]; then
+      log_warn "Preset not found: $preset_name"
+      read -p "Do you want to save this as a new preset? (y/n) " -n 1 -r
+      echo
+      if [[ $REPLY =~ ^[Yy]$ ]]; then
+        save "$preset_name"
+        preset_file="$PRESETS_DIR/${preset_name}.json"
+        log_info "New preset created: $preset_name"
+      else
+        log_info "Run 'opencode-loadout list' or 'ocl list' to see available presets"
+        exit 1
+      fi
+    else
+      # Already at a preset - just error
+      log_error "Preset not found: $preset_name"
+      log_info "Run 'opencode-loadout list' or 'ocl list' to see available presets"
+      exit 1
+    fi
   fi
 
   log_info "Switching to preset: $preset_name"
 
   # Backup current config
-  backup_config
+  backup_config_if_changed
 
   # Check if required plugins are installed
   local missing_plugins=()
@@ -230,6 +284,9 @@ switch() {
     jq --argjson plugins "$plugins" '.plugin = $plugins' "$OPENCODE_CONFIG" > "${OPENCODE_CONFIG}.tmp"
     mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
   fi
+
+  # Save current preset to state
+  set_state_preset "$preset_name"
 
   log_success "Preset applied: $preset_name"
   log_info "Restart OpenCode for changes to take effect"
@@ -311,6 +368,57 @@ info() {
 
   log_info "Preset: $preset_name"
   jq -r ' "\(.description // "No description")\n\nPlugins: \(.plugins | join(", "))\nRequires: \(.requires | keys | join(", "))"' "$preset_file"
+}
+
+# Save current configuration as a preset
+save() {
+  local preset_name="$1"
+
+  check_opencode
+  ensure_dirs
+
+  if [[ -z "$preset_name" ]]; then
+    log_error "Preset name is required"
+    log_info "Usage: opencode-loadout save <preset-name> or ocl save <preset-name>"
+    exit 1
+  fi
+
+  local preset_file="$PRESETS_DIR/${preset_name}.json"
+
+  if [[ -f "$preset_file" ]]; then
+    read -p "Preset '$preset_name' already exists. Overwrite? (y/n) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      log_info "Save cancelled"
+      exit 0
+    fi
+  fi
+
+  # Read description
+  local description=""
+  read -p "Description for preset (optional): " description
+  if [[ -z "$description" ]]; then
+    description="Custom preset saved at $(date +%Y-%m-%d)"
+  fi
+
+  # Get current plugins from OpenCode config
+  local plugins_json="[]"
+  if [[ -f "$OPENCODE_CONFIG" ]]; then
+    plugins_json=$(jq -c '.plugin // []' "$OPENCODE_CONFIG")
+  fi
+
+  # Create preset JSON
+  cat > "$preset_file" << EOF
+{
+  "name": "$preset_name",
+  "description": "$description",
+  "plugins": $plugins_json,
+  "requires": {}
+}
+EOF
+
+  log_success "Preset saved: $preset_name"
+  log_info "Location: $preset_file"
 }
 
 # Restore from backup
@@ -432,48 +540,101 @@ check_plugins() {
   done
 }
 
+# Detect current active configurations
+detect_active_configs() {
+  local active_plugins=()
+  local active_configs=()
+  
+  # Get active plugins from opencode.json
+  if [[ -f "$OPENCODE_CONFIG" ]]; then
+    active_plugins=$(jq -r ".plugin // []" "$OPENCODE_CONFIG" 2>/dev/null || echo "[]")
+  fi
+  
+  # Detect OMO configuration
+  local omo_config=""
+  local omo_active="false"
+  if echo "$active_plugins" | jq -e "contains(["oh-my-opencode"])" > /dev/null; then
+    omo_active="true"
+    if [[ -f "$HOME/.config/opencode/oh-my-opencode.json" ]]; then
+      omo_config="$HOME/.config/opencode/oh-my-opencode.json"
+    fi
+  fi
+  
+  # Detect Orchestra configuration
+  local orchestra_config=""
+  local orchestra_active="false"
+  if echo "$active_plugins" | jq -e "contains(["opencode-orchestrator"])" > /dev/null; then
+    orchestra_active="true"
+    if [[ -f "$HOME/.config/opencode/orchestrator.json" ]]; then
+      orchestra_config="$HOME/.config/opencode/orchestrator.json"
+    fi
+  fi
+  
+  # Detect project-specific configs
+  local project_omo_config=""
+  local project_orchestra_config=""
+  if [[ -f ".opencode/oh-my-opencode.json" ]]; then
+    project_omo_config=".opencode/oh-my-opencode.json"
+  fi
+  if [[ -f ".opencode/orchestrator.json" ]]; then
+    project_orchestra_config=".opencode/orchestrator.json"
+  fi
+  
+  # Return as JSON for easy parsing
+  echo "{
+    "plugins": "$active_plugins",
+    "omo": {
+      "active": "$omo_active",
+      "config": "$omo_config",
+      "project_config": "$project_omo_config"
+    },
+    "orchestra": {
+      "active": "$orchestra_active",
+      "config": "$orchestra_config",
+      "project_config": "$project_orchestra_config"
+    }
+  }"
+}
+
 # Show help
 help() {
   cat << EOF
-OpenCode Loadout - Configuration Manager for OpenCode
+ OpenCode Loadout - Configuration Manager for OpenCode
 
- USAGE:
-    opencode-loadout <command> [arguments]
-    ocl <command> [arguments]  (abbreviation)
+  USAGE:
+     opencode-loadout <command> [arguments]
+     ocl <command> [arguments]  (abbreviation)
 
- COMMANDS:
-    list                    List available presets
-    current                 Show current preset
-    switch <preset>         Switch to a preset
-    info <preset>           Show preset details
-    check-plugins           Check which plugins are installed
-    init [preset]           Initialize project with preset
-    profile <action>        Manage project profiles
-        profile list        List available profiles
-        profile use <name>  Use a project profile
-    restore [backup]        Restore from backup
-    verify                  Verify setup
-    help                    Show this help message
+  COMMANDS:
+     list                    List available presets
+     current                 Show current preset
+     switch <preset>         Switch to a preset
+     save <name>             Save current configuration as a new preset
+     info <preset>           Show preset details
+     check-plugins           Check which plugins are installed
+     init [preset]           Initialize project with preset
+     profile <action>        Manage project profiles
+         profile list        List available profiles
+         profile use <name>  Use a project profile
+     restore [backup]        Restore from backup
+     verify                  Verify setup
+     help                    Show this help message
 
- PRESETS:
-    core          - Vanilla OpenCode (no plugins)
-    omo           - Oh-My-OpenCode with Sisyphus orchestrator
-    omo-full      - Oh-My-OpenCode with all agents and features
-    orchestra     - Open Orchestra multi-agent system
+  PRESETS:
+     core          - Vanilla OpenCode (no plugins)
+     omo           - Oh-My-OpenCode with Sisyphus orchestrator
+     omo-full      - Oh-My-OpenCode with all agents and features
+     orchestra     - Open Orchestra multi-agent system
 
- EXAMPLES:
-    opencode-loadout list
-    ocl list
-    opencode-loadout switch omo
-    ocl switch omo
-    opencode-loadout current
-    ocl current
-    opencode-loadout profile list
-    ocl profile list
-    opencode-loadout profile use frontend-heavy
-    ocl profile use frontend-heavy
+  EXAMPLES:
+     ocl list
+     ocl switch omo
+     ocl current
+     ocl save my-custom-preset
+     ocl profile list
+     ocl profile use frontend-heavy
 
-For more info, see: https://github.com/YOUR_USERNAME/opencode-loadout
+ For more info, see: https://github.com/YOUR_USERNAME/opencode-loadout
 EOF
 }
 
@@ -494,6 +655,13 @@ main() {
         exit 1
       fi
       switch "$2"
+      ;;
+    save)
+      if [[ $# -lt 2 ]]; then
+        log_error "Usage: opencode-loadout save <preset-name> or ocl save <preset-name>"
+        exit 1
+      fi
+      save "$2"
       ;;
     info)
       if [[ $# -lt 2 ]]; then

@@ -1,53 +1,68 @@
 # OpenCode Loadout
 
-> Switch between different OpenCode configurations easily
+🚀 **Configuration Manager for OpenCode** - Switch between different OpenCode setups effortlessly with presets and profiles.
 
 ![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![OpenCode](https://img.shields.io/badge/platform-OpenCode-6495ED.svg)
 
-## Overview
+## Features
 
-OpenCode Loadout is a configuration manager that allows you to switch between different OpenCode setups instantly. Instead of manually editing config files every time you want to change your agent setup, you can simply switch loadouts.
+- **Presets**: Pre-configured plugin combinations for different workflows
+- **Profiles**: Project-specific configurations for team collaboration
+- **Backup & Restore**: Safely backup and restore your OpenCode configuration
+- **Plugin Management**: Check which plugins are installed and what's missing
+- **Cross-platform**: Works on Linux and macOS
+- **CLI-first**: Simple command-line interface with short aliases
 
-You can use either the full name `opencode-loadout` or the abbreviation `ocl` for all commands.
+## Quick Start
 
-### Supported Configurations
-
-- **OpenCode Core** - Vanilla OpenCode with default build/plan agents
-- **Oh-My-OpenCode (OMO)** - Full-featured plugin with Sisyphus orchestrator and specialized agents
-- **Open Orchestra** - Multi-agent hub-and-spoke orchestration system
-
-## Why This Exists
-
-Managing multiple OpenCode configurations manually is painful:
+### Installation
 
 ```bash
-# To use OMO
-echo '"oh-my-opencode"' >> ~/.config/opencode/opencode.json
+# One-line installer
+curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/opencode-loadout/main/install.sh | bash
 
-# To use Open Orchestra
-echo '"opencode-orchestrator"' >> ~/.config/opencode/opencode.json
-
-# To go back to vanilla
-# Edit the file manually...
+# Or download and run manually
+wget https://raw.githubusercontent.com/YOUR_USERNAME/opencode-loadout/main/install.sh
+chmod +x install.sh
+./install.sh
 ```
 
-With OpenCode Loadout:
+**Requirements:**
+- OpenCode CLI (`npm install -g @opencode/cli`)
+- `jq` (JSON processor)
+- `curl` or `wget`
+
+### Basic Usage
 
 ```bash
-# Switch to OMO (use full name or abbreviation)
+# List available presets
+opencode-loadout list
+# or short version
+ocl list
+
+# Switch to a preset
 opencode-loadout switch omo
-ocl switch omo
+ocl switch omo-full
 
-# Switch to Open Orchestra
-opencode-loadout switch orchestra
-ocl switch orchestra
+# See current configuration
+opencode-loadout current
+ocl current
 
-# Back to vanilla
-opencode-loadout switch core
-ocl switch core
+# Get preset details
+opencode-loadout info omo
+ocl info orchestra
 ```
+
+## Available Presets
+
+| Preset | Description | Plugins |
+|--------|-------------|---------|
+| `core` | Vanilla OpenCode (no plugins) | - |
+| `omo` | Oh-My-OpenCode with Sisyphus orchestrator | `oh-my-opencode` |
+| `omo-full` | Oh-My-OpenCode with all agents and features | `oh-my-opencode`, `opencode-frontend`, `opencode-backend` |
+| `orchestra` | Open Orchestra multi-agent system | `opencode-orchestrator` |
 
 ## Feasibility Analysis
 
@@ -508,21 +523,6 @@ ocl verify
 ```
 
 ## Future Enhancements
-
-### Phase 2 Features
-
-- **Auto-detect project type** → Suggest appropriate profile
-- **Hot-swap** → Change config without restarting OpenCode
-- **Preset marketplace** → Share and download community presets
-- **Preset builder UI** → Visual configuration editor
-- **Metrics tracking** → See which presets/models you use most
-
-### Phase 3 Ideas
-
-- **Adaptive switching** → Auto-switch based on task type
-- **Model load balancing** → Distribute across multiple API keys
-- **Team presets** → Shared configs for teams
-- **Integration with Oh-My-OpenCode updates** → Auto-pull new features
 
 ## Contributing
 
