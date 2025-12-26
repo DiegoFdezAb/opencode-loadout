@@ -62,13 +62,20 @@ check_opencode() {
 # Check if a plugin is installed
 is_plugin_installed() {
   local plugin_name="$1"
-  local opencode_dir="${OPENCODE_CONFIG_PATH:-$HOME/.config/opencode}"
-
+  
   # Check node_modules
+  local opencode_dir="${OPENCODE_CONFIG_PATH:-$HOME/.config/opencode}"
   if [[ -d "$opencode_dir/node_modules/$plugin_name" ]]; then
     return 0
   fi
-
+  
+  # Check if available via bunx
+  if command -v bunx &>/dev/null; then
+    if bunx "$plugin_name" --version &>/dev/null 2>&1; then
+      return 0
+    fi
+  fi
+  
   return 1
 }
 
@@ -430,7 +437,7 @@ help() {
   cat << EOF
 OpenCode Loadout - Configuration Manager for OpenCode
 
-USAGE:
+ USAGE:
     opencode-loadout <command> [arguments]
     ocl <command> [arguments]  (abbreviation)
 
@@ -448,13 +455,13 @@ USAGE:
     verify                  Verify setup
     help                    Show this help message
 
-PRESETS:
+ PRESETS:
     core          - Vanilla OpenCode (no plugins)
     omo           - Oh-My-OpenCode with Sisyphus orchestrator
     omo-full      - Oh-My-OpenCode with all agents and features
     orchestra     - Open Orchestra multi-agent system
 
-EXAMPLES:
+ EXAMPLES:
     opencode-loadout list
     ocl list
     opencode-loadout switch omo
