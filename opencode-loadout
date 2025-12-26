@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# OpenCode Presets - Configuration Manager for OpenCode
+# OpenCode Loadout - Configuration Manager for OpenCode
 # Switch between different OpenCode setups easily
 
 set -euo pipefail
@@ -9,10 +9,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Default paths
-CONFIG_FILE="${OPENCODE_PRESETS_CONFIG:-$HOME/.opencode-presets/config.json}"
-PRESETS_DIR="${OPENCODE_PRESETS_DIR:-$HOME/.opencode-presets/presets}"
-PROFILES_DIR="${OPENCODE_PROFILES_DIR:-$HOME/.opencode-presets/profiles}"
-BACKUPS_DIR="${OPENCODE_BACKUPS_DIR:-$HOME/.opencode-presets/backups}"
+CONFIG_FILE="${OPENCODE_LOADOUT_CONFIG:-$HOME/.opencode-loadout/config.json}"
+PRESETS_DIR="${OPENCODE_LOADOUT_DIR:-$HOME/.opencode-loadout/presets}"
+PROFILES_DIR="${OPENCODE_PROFILES_DIR:-$HOME/.opencode-loadout/profiles}"
+BACKUPS_DIR="${OPENCODE_BACKUPS_DIR:-$HOME/.opencode-loadout/backups}"
 OPENCODE_CONFIG="${OPENCODE_CONFIG_PATH:-$HOME/.config/opencode/opencode.json}"
 
 # Colors
@@ -175,7 +175,7 @@ switch() {
   local preset_file="$PRESETS_DIR/${preset_name}.json"
   if [[ ! -f "$preset_file" ]]; then
     log_error "Preset not found: $preset_name"
-    log_info "Run 'opencode-presets list' to see available presets"
+    log_info "Run 'opencode-loadout list' or 'ocl list' to see available presets"
     exit 1
   fi
 
@@ -316,7 +316,7 @@ restore() {
   if [[ -z "$backup_name" ]]; then
     log_info "Available backups:"
     ls -lt "$BACKUPS_DIR"/*.json 2>/dev/null | head -5
-    log_info "Usage: opencode-presets restore <backup-file>"
+    log_info "Usage: opencode-loadout restore <backup-file> or 'ocl restore <backup-file>'"
     return
   fi
 
@@ -428,10 +428,11 @@ check_plugins() {
 # Show help
 help() {
   cat << EOF
-OpenCode Presets - Configuration Manager for OpenCode
+OpenCode Loadout - Configuration Manager for OpenCode
 
 USAGE:
-    opencode-presets <command> [arguments]
+    opencode-loadout <command> [arguments]
+    ocl <command> [arguments]  (abbreviation)
 
  COMMANDS:
     list                    List available presets
@@ -454,13 +455,18 @@ PRESETS:
     orchestra     - Open Orchestra multi-agent system
 
 EXAMPLES:
-    opencode-presets list
-    opencode-presets switch omo
-    opencode-presets current
-    opencode-presets profile list
-    opencode-presets profile use frontend-heavy
+    opencode-loadout list
+    ocl list
+    opencode-loadout switch omo
+    ocl switch omo
+    opencode-loadout current
+    ocl current
+    opencode-loadout profile list
+    ocl profile list
+    opencode-loadout profile use frontend-heavy
+    ocl profile use frontend-heavy
 
-For more info, see: https://github.com/YOUR_USERNAME/opencode-presets
+For more info, see: https://github.com/YOUR_USERNAME/opencode-loadout
 EOF
 }
 
@@ -477,14 +483,14 @@ main() {
       ;;
     switch)
       if [[ $# -lt 2 ]]; then
-        log_error "Usage: opencode-presets switch <preset>"
+        log_error "Usage: opencode-loadout switch <preset> or ocl switch <preset>"
         exit 1
       fi
       switch "$2"
       ;;
     info)
       if [[ $# -lt 2 ]]; then
-        log_error "Usage: opencode-presets info <preset>"
+        log_error "Usage: opencode-loadout info <preset> or ocl info <preset>"
         exit 1
       fi
       info "$2"
@@ -497,7 +503,7 @@ main() {
       ;;
     profile)
       if [[ $# -lt 2 ]]; then
-        log_error "Usage: opencode-presets profile <action>"
+        log_error "Usage: opencode-loadout profile <action> or ocl profile <action>"
         exit 1
       fi
       profile "$@"
