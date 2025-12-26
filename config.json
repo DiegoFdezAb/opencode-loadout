@@ -2,7 +2,7 @@
   "$schema": "./schema/presets.schema.json",
   "defaultPreset": "core",
   "autoBackup": true,
-  "backupDir": "~/.opencode-presets/backups",
+  "backupDir": "~/.opencode-loadout/backups",
   "opencodeConfigPath": "~/.config/opencode/opencode.json",
   "plugins": {
     "oh-my-opencode": {

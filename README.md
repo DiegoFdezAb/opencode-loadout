@@ -1,4 +1,4 @@
-# OpenCode Presets
+# OpenCode Loadout
 
 > Switch between different OpenCode configurations easily
 
@@ -8,7 +8,9 @@
 
 ## Overview
 
-OpenCode Presets is a configuration manager that allows you to switch between different OpenCode setups instantly. Instead of manually editing config files every time you want to change your agent setup, you can simply switch presets.
+OpenCode Loadout is a configuration manager that allows you to switch between different OpenCode setups instantly. Instead of manually editing config files every time you want to change your agent setup, you can simply switch loadouts.
+
+You can use either the full name `opencode-loadout` or the abbreviation `ocl` for all commands.
 
 ### Supported Configurations
 
@@ -31,17 +33,20 @@ echo '"opencode-orchestrator"' >> ~/.config/opencode/opencode.json
 # Edit the file manually...
 ```
 
-With OpenCode Presets:
+With OpenCode Loadout:
 
 ```bash
-# Switch to OMO
-opencode-presets switch omo
+# Switch to OMO (use full name or abbreviation)
+opencode-loadout switch omo
+ocl switch omo
 
 # Switch to Open Orchestra
-opencode-presets switch orchestra
+opencode-loadout switch orchestra
+ocl switch orchestra
 
 # Back to vanilla
-opencode-presets switch core
+opencode-loadout switch core
+ocl switch core
 ```
 
 ## Feasibility Analysis
@@ -117,14 +122,24 @@ sudo dnf install jq
 sudo pacman -S jq
 ```
 
-### Install OpenCode Presets
+### Install OpenCode Loadout
 
 ```bash
-# Clone the repo
-git clone https://github.com/YOUR_USERNAME/opencode-presets.git ~/.opencode-presets
+# Clone repo
+git clone https://github.com/YOUR_USERNAME/opencode-loadout.git ~/.opencode-loadout
 
 # Add to PATH (add to ~/.bashrc or ~/.zshrc)
-export PATH="$HOME/.opencode-presets:$PATH"
+export PATH="$HOME/.opencode-loadout:$PATH"
+```
+
+Now you can use either the full name or the abbreviation:
+
+```bash
+# Full name
+opencode-loadout switch omo
+
+# Abbreviation (recommended)
+ocl switch omo
 ```
 
 Reload your shell:
@@ -137,7 +152,9 @@ source ~/.bashrc   # or ~/.zshrc
 ### List Available Presets
 
 ```bash
-opencode-presets list
+opencode-loadout list
+# or
+ocl list
 ```
 
 Output:
@@ -154,14 +171,17 @@ Available presets:
 ### Switch to a Preset
 
 ```bash
-# Switch to OMO
-opencode-presets switch omo
+# Switch to OMO (full name or abbreviation)
+opencode-loadout switch omo
+ocl switch omo
 
 # Switch to Open Orchestra
-opencode-presets switch orchestra
+opencode-loadout switch orchestra
+ocl switch orchestra
 
 # Switch to vanilla OpenCode
-opencode-presets switch core
+opencode-loadout switch core
+ocl switch core
 ```
 
 This will:
@@ -173,7 +193,9 @@ This will:
 ### Check Current Preset
 
 ```bash
-opencode-presets current
+opencode-loadout current
+# or
+ocl current
 ```
 
 Output:
@@ -188,7 +210,9 @@ Output:
 Check which plugins are installed and which presets can be used:
 
 ```bash
-opencode-presets check-plugins
+opencode-loadout check-plugins
+# or
+ocl check-plugins
 ```
 
 Output:
@@ -208,7 +232,9 @@ Output:
 If you try to switch to a preset whose plugins aren't installed, you'll get an error:
 
 ```bash
-opencode-presets switch orchestra
+opencode-loadout switch orchestra
+# or
+ocl switch orchestra
 ```
 
 Output:
@@ -222,19 +248,23 @@ Output:
 
 ```bash
 # Copy an existing preset as a template
-cp ~/.opencode-presets/presets/omo-full.json ~/.opencode-presets/presets/my-custom.json
+cp ~/.opencode-loadout/presets/omo-full.json ~/.opencode-loadout/presets/my-custom.json
 
 # Edit it
-vim ~/.opencode-presets/presets/my-custom.json
+vim ~/.opencode-loadout/presets/my-custom.json
 
 # Switch to it
-opencode-presets switch my-custom
+opencode-loadout switch my-custom
+# or
+ocl switch my-custom
 ```
 
 ### View Preset Details
 
 ```bash
-opencode-presets info omo-full
+opencode-loadout info omo-full
+# or
+ocl info omo-full
 ```
 
 ## Project-Specific Profiles
@@ -248,7 +278,9 @@ For OMO, you can have different configurations per project:
 cd ~/projects/my-frontend-app
 
 # Initialize project-specific OMO config
-opencode-presets init omo
+opencode-loadout init omo
+# or
+ocl init omo
 ```
 
 This creates `.opencode/oh-my-opencode.json` with project-specific settings.
@@ -258,7 +290,7 @@ This creates `.opencode/oh-my-opencode.json` with project-specific settings.
 Create profiles like:
 
 ```bash
-~/.opencode-presets/profiles/
+~/.opencode-loadout/profiles/
 ├── frontend-heavy.json    # Gemini for UI, Claude for logic
 ├── backend-api.json       # Claude for API, GPT for docs
 ├── full-stack.json        # All models balanced
@@ -269,19 +301,23 @@ Create profiles like:
 
 ```bash
 cd ~/projects/my-app
-opencode-presets profile use frontend-heavy
+opencode-loadout profile use frontend-heavy
+# or
+ocl profile use frontend-heavy
 ```
 
 ### View Available Profiles
 
 ```bash
-opencode-presets profile list
+opencode-loadout profile list
+# or
+ocl profile list
 ```
 
 ## Preset Directory Structure
 
 ```
-~/.opencode-presets/
+~/.opencode-loadout/
 ├── presets/                 # Global preset configurations
 │   ├── core.json
 │   ├── omo.json
@@ -295,22 +331,23 @@ opencode-presets profile list
 │   └── research-mode.json
 ├── backups/                 # Backup configs
 │   └── backup-2025-01-15.json
-├── opencode-presets         # Main CLI script
-└── config.json              # OpenCode Presets settings
+├── opencode-loadout         # Main CLI script
+├── ocl                     # Symlink to opencode-loadout
+└── config.json              # OpenCode Loadout settings
 ```
 
 ## Configuration
 
 ### Global Config
 
-`~/.opencode-presets/config.json`:
+`~/.opencode-loadout/config.json`:
 
 ```json
 {
   "$schema": "./schema/presets.schema.json",
   "defaultPreset": "core",
   "autoBackup": true,
-  "backupDir": "~/.opencode-presets/backups",
+  "backupDir": "~/.opencode-loadout/backups",
   "opencodeConfigPath": "~/.config/opencode/opencode.json",
   "plugins": {
     "oh-my-opencode": {
@@ -383,13 +420,16 @@ Each preset in `presets/*.json`:
 
 ```bash
 # Morning: Research phase - use librarian/explore
-opencode-presets switch omo-research
+opencode-loadout switch omo-research
+ocl switch omo-research
 
 # Afternoon: Implementation - use Sisyphus with all agents
-opencode-presets switch omo-full
+opencode-loadout switch omo-full
+ocl switch omo-full
 
 # Evening: Light coding - use vanilla OpenCode
-opencode-presets switch core
+opencode-loadout switch core
+ocl switch core
 ```
 
 ### Multi-Project Setup
@@ -397,29 +437,39 @@ opencode-presets switch core
 ```bash
 # Project A: Frontend with Gemini
 cd ~/projects/frontend-app
-opencode-presets profile use frontend-heavy
+opencode-loadout profile use frontend-heavy
+ocl profile use frontend-heavy
 
 # Project B: Backend with Claude
 cd ~/projects/backend-api
-opencode-presets profile use backend-api
+opencode-loadout profile use backend-api
+ocl profile use backend-api
 
 # Project C: Full stack
 cd ~/projects/monolith
-opencode-presets profile use full-stack
+opencode-loadout profile use full-stack
+ocl profile use full-stack
 ```
 
 ### Restore from Backup
 
 ```bash
-opencode-presets restore
-opencode-presets restore --list  # List all backups
-opencode-presets restore backup-2025-01-15.json  # Restore specific
+opencode-loadout restore
+opencode-loadout restore --list  # List all backups
+opencode-loadout restore backup-2025-01-15.json  # Restore specific
+
+# Or using abbreviation
+ocl restore
+ocl restore --list
+ocl restore backup-2025-01-15.json
 ```
 
 ### Verify Setup
 
 ```bash
-opencode-presets verify
+opencode-loadout verify
+# or
+ocl verify
 ```
 
 This checks:
@@ -434,23 +484,27 @@ This checks:
 
 ```bash
 # Check if plugin is installed
-opencode-presets check-plugin oh-my-opencode
+opencode-loadout check-plugins
+ocl check-plugins
 
-# Reinstall
-opencode-presets reinstall omo
+# Install missing plugin
+bunx oh-my-opencode install  # For OMO
+bun add opencode-orchestrator     # For Orchestra
 ```
 
 ### Config got messed up
 
 ```bash
 # Restore from backup
-opencode-presets restore
+opencode-loadout restore
+ocl restore
 ```
 
 ### Verify current setup
 
 ```bash
-opencode-presets verify
+opencode-loadout verify
+ocl verify
 ```
 
 ## Future Enhancements
@@ -476,13 +530,14 @@ Want to add a preset? Submit a PR!
 
 ```bash
 # Fork the repo
-git clone https://github.com/YOUR_USERNAME/opencode-presets.git
+git clone https://github.com/YOUR_USERNAME/opencode-loadout.git
 
 # Add your preset
 vim presets/my-awesome-preset.json
 
 # Test it
-opencode-presets switch my-awesome-preset
+opencode-loadout switch my-awesome-preset
+ocl switch my-awesome-preset
 
 # PR!
 ```
