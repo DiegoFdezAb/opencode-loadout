@@ -9,12 +9,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Default paths
-CONFIG_FILE="${OPENCODE_LOADOUT_CONFIG:-$HOME/dev/opencode-loadout/config.json}"
-PRESETS_DIR="${OPENCODE_LOADOUT_DIR:-$HOME/dev/opencode-loadout/presets}"
-PROFILES_DIR="${OPENCODE_PROFILES_DIR:-$HOME/dev/opencode-loadout/profiles}"
-BACKUPS_DIR="${OPENCODE_BACKUPS_DIR:-$HOME/dev/opencode-loadout/backups}"
+CONFIG_FILE="${OPENCODE_LOADOUT_CONFIG:-$HOME/.config/opencode-loadout/config.json}"
+PRESETS_DIR="${OPENCODE_LOADOUT_DIR:-$HOME/.config/opencode-loadout/presets}"
+PROFILES_DIR="${OPENCODE_PROFILES_DIR:-$HOME/.config/opencode-loadout/profiles}"
+BACKUPS_DIR="${OPENCODE_BACKUPS_DIR:-$HOME/.config/opencode-loadout/backups}"
 OPENCODE_CONFIG="${OPENCODE_CONFIG_PATH:-$HOME/.config/opencode/opencode.json}"
-STATE_FILE="${OPENCODE_LOADOUT_STATE:-$HOME/dev/opencode-loadout/.state}"
+STATE_FILE="${OPENCODE_LOADOUT_STATE:-$HOME/.config/opencode-loadout/.state}"
 
 # Colors
 RED='\033[0;31m'
@@ -84,7 +84,22 @@ check_opencode() {
 
 # Check if a plugin is installed
 is_plugin_installed() {
-  local plugin_name="$1"
+  local plugin_full="$1"
+  local plugin_name="$plugin_full"
+  
+  # Strip version tag if present
+  if [[ "$plugin_full" == *@* ]]; then
+    if [[ "$plugin_full" == @* ]]; then
+      # Scoped package: check for second @
+      local rest="${plugin_full:1}"
+      if [[ "$rest" == *@* ]]; then
+        plugin_name="@${rest%@*}"
+      fi
+    else
+      # Regular package: strip after first @
+      plugin_name="${plugin_full%@*}"
+    fi
+  fi
   
   # Check node_modules
   local opencode_dir="${OPENCODE_CONFIG_PATH:-$HOME/.config/opencode}"
@@ -213,31 +228,51 @@ switch() {
   check_opencode
   ensure_dirs
 
-  # Check if preset exists
   local preset_file="$PRESETS_DIR/${preset_name}.json"
   local current_preset
   current_preset=$(get_state_preset)
 
-  if [[ ! -f "$preset_file" ]]; then
-    # If at "none" and trying to switch to non-existent preset, offer to save first
-    if [[ "$current_preset" == "none" ]]; then
-      log_warn "Preset not found: $preset_name"
-      read -p "Do you want to save this as a new preset? (y/n) " -n 1 -r
-      echo
-      if [[ $REPLY =~ ^[Yy]$ ]]; then
-        save "$preset_name"
-        preset_file="$PRESETS_DIR/${preset_name}.json"
-        log_info "New preset created: $preset_name"
-      else
-        log_info "Run 'opencode-loadout list' or 'ocl list' to see available presets"
-        exit 1
-      fi
+  if [[ "$current_preset" == "none" ]]; then
+    log_warn "Current preset not saved"
+    
+    # Confirmation y/n (stocké dans $REPLY)
+    read -p "Do you want to save this as a new preset? (y/n) " -n 1 -r
+    echo
+    
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        # Demander le nom et stocker dans la variable preset_name
+        read -p "Enter preset name: " preset_name
+        
+        # Maintenant $preset_name contient le nom entré par l'utilisateur
+        if [[ -n "$preset_name" ]]; then
+            save "$preset_name"
+            log_success "Preset saved: $preset_name"
+        else
+            log_error "Preset name cannot be empty"
+        fi
     else
-      # Already at a preset - just error
-      log_error "Preset not found: $preset_name"
-      log_info "Run 'opencode-loadout list' or 'ocl list' to see available presets"
-      exit 1
+        log_info "Skipping save"
     fi
+  fi
+
+  if [[ ! -f "$preset_file" ]]; then
+    
+    # Already at a preset - just error
+    log_error "Preset not found: $preset_name"
+    log_info "Run 'opencode-loadout list' or 'ocl list' to see available presets"
+    exit 1
+  fi
+
+
+
+  # Check if preset exists
+  local preset_file="$PRESETS_DIR/${preset_name}.json"
+
+  if [[ ! -f "$preset_file" ]]; then
+    log_error "Preset not found: $preset_name"
+    log_info "Run 'opencode-loadout list' or 'ocl list' to see available presets"
+    log_info "Use 'opencode-loadout save <name>' or 'ocl save <name>' to create a new preset"
+    exit 1
   fi
 
   log_info "Switching to preset: $preset_name"
@@ -254,14 +289,20 @@ switch() {
   done < <(jq -r '.plugins[] // empty' "$preset_file")
 
   if [[ ${#missing_plugins[@]} -gt 0 ]]; then
-    log_error "Plugin(s) non installé(s):"
+    log_warn "Plugin(s) non installé(s) ou version différente :"
     for plugin in "${missing_plugins[@]}"; do
       local install_cmd
       install_cmd=$(get_plugin_install_cmd "$plugin")
       echo "  - $plugin"
-      log_info "  Installation: $install_cmd"
+      log_info "  Installation recommandée : $install_cmd"
     done
-    exit 1
+    
+    read -p "Souhaitez-vous continuer le switch quand même ? (y/n) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      log_info "Switch annulé"
+      exit 1
+    fi
   fi
 
   # Read preset config
@@ -634,7 +675,7 @@ help() {
      ocl profile list
      ocl profile use frontend-heavy
 
- For more info, see: https://github.com/YOUR_USERNAME/opencode-loadout
+ For more info, see: https://github.com/DiegoFdezAb/opencode-loadout
 EOF
 }
 

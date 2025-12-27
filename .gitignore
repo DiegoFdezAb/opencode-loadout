@@ -7,3 +7,7 @@ backups/*.json
 # OS files
 .DS_Store
 Thumbs.db
+
+# Dev tools
+dev-install.sh
+

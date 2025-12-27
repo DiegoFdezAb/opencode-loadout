@@ -115,7 +115,7 @@ install_script() {
     mkdir -p "$install_dir"
     
     # Download the script
-    local script_url="https://raw.githubusercontent.com/YOUR_USERNAME/opencode-loadout/main/opencode-loadout"
+    local script_url="https://raw.githubusercontent.com/DiegoFdezAb/opencode-loadout/main/opencode-loadout"
     log_info "Downloading script from: $script_url"
     
     if command_exists "curl"; then
@@ -159,36 +159,61 @@ init_directories() {
     local presets_dir="$config_dir/presets"
     local profiles_dir="$config_dir/profiles"
     local backups_dir="$config_dir/backups"
+    local schema_dir="$config_dir/schema"
     
     log_info "Initializing configuration directories..."
     
     mkdir -p "$presets_dir"
     mkdir -p "$profiles_dir"
     mkdir -p "$backups_dir"
+    mkdir -p "$schema_dir"
+    
+    # Initialize state file if not exists
+    if [[ ! -f "$config_dir/.state" ]]; then
+        echo '{"current_preset": "none"}' > "$config_dir/.state"
+        log_success "State file initialized"
+    fi
+    
+    local base_url="https://raw.githubusercontent.com/DiegoFdezAb/opencode-loadout/main"
+
+    # Download config.json
+    log_info "Downloading config.json..."
+    if command_exists "curl" ; then
+        curl -fsSL "$base_url/config.json" -o "$config_dir/config.json"
+    elif command_exists "wget" ; then
+        wget -q "$base_url/config.json" -O "$config_dir/config.json"
+    fi
+
+    # Download schemas
+    local schemas=("preset.schema.json" "presets.schema.json" "profile.schema.json")
+    for schema in "${schemas[@]}"; do
+        log_info "Downloading schema: $schema"
+        if command_exists "curl"; then
+            curl -fsSL "$base_url/schema/$schema" -o "$schema_dir/$schema"
+        elif command_exists "wget"; then
+            wget -q "$base_url/schema/$schema" -O "$schema_dir/$schema"
+        fi
+    done
     
     # Download default presets
-    local presets_base_url="https://raw.githubusercontent.com/YOUR_USERNAME/opencode-loadout/main/presets"
     local presets=("core.json" "omo.json" "omo-full.json" "orchestra.json")
-    
     for preset in "${presets[@]}"; do
         log_info "Downloading preset: $preset"
         if command_exists "curl"; then
-            curl -fsSL "$presets_base_url/$preset" -o "$presets_dir/$preset"
+            curl -fsSL "$base_url/presets/$preset" -o "$presets_dir/$preset"
         elif command_exists "wget"; then
-            wget -q "$presets_base_url/$preset" -O "$presets_dir/$preset"
+            wget -q "$base_url/presets/$preset" -O "$presets_dir/$preset"
         fi
     done
     
     # Download default profiles
-    local profiles_base_url="https://raw.githubusercontent.com/YOUR_USERNAME/opencode-loadout/main/profiles"
-    local profiles=("frontend.json" "backend.json" "fullstack.json" "data.json" "devops.json")
-    
+    local profiles=("frontend-heavy.json" "backend-api.json" "full-stack.json" "research-mode.json")
     for profile in "${profiles[@]}"; do
         log_info "Downloading profile: $profile"
         if command_exists "curl"; then
-            curl -fsSL "$profiles_base_url/$profile" -o "$profiles_dir/$profile"
+            curl -fsSL "$base_url/profiles/$profile" -o "$profiles_dir/$profile"
         elif command_exists "wget"; then
-            wget -q "$profiles_base_url/$profile" -O "$profiles_dir/$profile"
+            wget -q "$base_url/profiles/$profile" -O "$profiles_dir/$profile"
         fi
     done
     

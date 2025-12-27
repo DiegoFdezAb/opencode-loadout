@@ -21,10 +21,10 @@
 
 ```bash
 # One-line installer
-curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/opencode-loadout/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/DiegoFdezAb/opencode-loadout/main/install.sh | bash
 
 # Or download and run manually
-wget https://raw.githubusercontent.com/YOUR_USERNAME/opencode-loadout/main/install.sh
+wget https://raw.githubusercontent.com/DiegoFdezAb/opencode-loadout/main/install.sh
 chmod +x install.sh
 ./install.sh
 ```
@@ -141,7 +141,7 @@ sudo pacman -S jq
 
 ```bash
 # Clone repo
-git clone https://github.com/YOUR_USERNAME/opencode-loadout.git ~/.opencode-loadout
+git clone https://github.com/DiegoFdezAb/opencode-loadout.git ~/.opencode-loadout
 
 # Add to PATH (add to ~/.bashrc or ~/.zshrc)
 export PATH="$HOME/.opencode-loadout:$PATH"
@@ -360,7 +360,7 @@ ocl profile list
 ```json
 {
   "$schema": "./schema/presets.schema.json",
-  "defaultPreset": "core",
+  "defaultPreset": "none",
   "autoBackup": true,
   "backupDir": "~/.opencode-loadout/backups",
   "opencodeConfigPath": "~/.config/opencode/opencode.json",
@@ -530,7 +530,7 @@ Want to add a preset? Submit a PR!
 
 ```bash
 # Fork the repo
-git clone https://github.com/YOUR_USERNAME/opencode-loadout.git
+git clone https://github.com/DiegoFdezAb/opencode-loadout.git
 
 # Add your preset
 vim presets/my-awesome-preset.json
