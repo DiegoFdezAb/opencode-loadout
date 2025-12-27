@@ -213,11 +213,43 @@ current() {
   current=$(get_current_preset)
   log_success "Current preset: $current"
 
+  # 1. Global Plugins
   if [[ -f "$OPENCODE_CONFIG" ]]; then
-    log_info "Active plugins:"
-    jq -r '.plugin // []' "$OPENCODE_CONFIG" 2>/dev/null | while read -r plugin; do
-      [[ -n "$plugin" ]] && echo "  - $plugin"
-    done
+    echo -e "${BLUE}[INFO] Active global plugins:${NC}"
+    local plugins_exist=false
+    while read -r plugin; do
+      if [[ -n "$plugin" && "$plugin" != "[]" ]]; then
+        echo "  - $plugin"
+        plugins_exist=true
+      fi
+    done < <(jq -r '.plugin[] // empty' "$OPENCODE_CONFIG" 2>/dev/null)
+    
+    if ! $plugins_exist; then
+      echo "  - None"
+    fi
+  fi
+
+  # 2. Agent Status (Local Profile vs Global Preset)
+  local omo_local=".opencode/oh-my-opencode.json"
+  if [[ -f "$omo_local" ]]; then
+    echo -e "\n${GREEN}[LOCAL PROFILE ACTIVE]${NC} (overrides global settings)"
+    if jq -e '.omo.agents' "$omo_local" >/dev/null 2>&1; then
+      echo -e "${YELLOW}Defined Agents (Local):${NC}"
+      jq -r '.omo.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$omo_local"
+    fi
+    if jq -e '.omo.disabled_agents' "$omo_local" >/dev/null 2>&1; then
+      local disabled
+      disabled=$(jq -r '.omo.disabled_agents | join(", ")' "$omo_local")
+      [[ -n "$disabled" ]] && echo -e "${RED}Disabled Agents (Local):${NC} $disabled"
+    fi
+  elif [[ "$current" != "none" ]]; then
+    local preset_file="$PRESETS_DIR/${current}.json"
+    if [[ -f "$preset_file" ]]; then
+      if jq -e '.config.omo.agents' "$preset_file" >/dev/null 2>&1; then
+        echo -e "\n${YELLOW}Defined Agents (from $current preset):${NC}"
+        jq -r '.config.omo.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$preset_file"
+      fi
+    fi
   fi
 }
 
