@@ -376,6 +376,32 @@ profile() {
         done
       fi
       ;;
+    info)
+      local profile_name="$1"
+      local profile_file="$PROFILES_DIR/${profile_name}.json"
+
+      if [[ ! -f "$profile_file" ]]; then
+        log_error "Profile not found: $profile_name"
+        exit 1
+      fi
+
+      log_info "Profile: $profile_name"
+      local description
+      description=$(jq -r '.description // "No description"' "$profile_file")
+      echo -e "${BLUE}Description:${NC} $description"
+
+      if jq -e '.omo.agents' "$profile_file" >/dev/null 2>&1; then
+        echo -e "\n${YELLOW}Defined Agents:${NC}"
+        jq -r '.omo.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$profile_file"
+      fi
+
+      if jq -e '.omo.disabled_agents' "$profile_file" >/dev/null 2>&1; then
+        local disabled
+        disabled=$(jq -r '.omo.disabled_agents | join(", ")' "$profile_file")
+        if [[ -z "$disabled" ]]; then disabled="None"; fi
+        echo -e "\n${RED}Disabled Agents:${NC} $disabled"
+      fi
+      ;;
     use)
       local profile_name="$1"
       local profile_file="$PROFILES_DIR/${profile_name}.json"
@@ -408,7 +434,27 @@ info() {
   fi
 
   log_info "Preset: $preset_name"
-  jq -r ' "\(.description // "No description")\n\nPlugins: \(.plugins | join(", "))\nRequires: \(.requires | keys | join(", "))"' "$preset_file"
+  
+  # Base info
+  local description
+  description=$(jq -r '.description // "No description"' "$preset_file")
+  local plugins
+  plugins=$(jq -r '.plugins | join(", ") // "None"' "$preset_file")
+  
+  echo -e "${BLUE}Description:${NC} $description"
+  echo -e "${BLUE}Plugins:${NC}     $plugins"
+  
+  # Agent info if OMO is present
+  if jq -e '.config.omo.agents' "$preset_file" >/dev/null 2>&1; then
+    echo -e "\n${YELLOW}Defined Agents:${NC}"
+    jq -r '.config.omo.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$preset_file"
+  fi
+  
+  # Sisyphus specific
+  if jq -e '.config.omo.sisyphus_agent' "$preset_file" >/dev/null 2>&1; then
+    echo -e "\n${YELLOW}Sisyphus Config:${NC}"
+    jq -r '.config.omo.sisyphus_agent | to_entries[] | "  - \(.key): \(.value)"' "$preset_file"
+  fi
 }
 
 # Save current configuration as a preset
@@ -656,6 +702,7 @@ help() {
      init [preset]           Initialize project with preset
      profile <action>        Manage project profiles
          profile list        List available profiles
+         profile info <name> Show profile details
          profile use <name>  Use a project profile
      restore [backup]        Restore from backup
      verify                  Verify setup
