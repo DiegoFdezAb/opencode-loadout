@@ -722,6 +722,7 @@ main() {
         log_error "Usage: opencode-loadout profile <action> or ocl profile <action>"
         exit 1
       fi
+      shift
       profile "$@"
       ;;
     restore)
