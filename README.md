@@ -2,18 +2,19 @@
 
 🚀 **Configuration Manager for OpenCode** - Switch between different OpenCode setups effortlessly with presets and profiles.
 
-![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-0.1.1-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![OpenCode](https://img.shields.io/badge/platform-OpenCode-6495ED.svg)
 
 ## Features
 
-- **Presets**: Pre-configured plugin combinations for different workflows
-- **Profiles**: Project-specific configurations for team collaboration
-- **Backup & Restore**: Safely backup and restore your OpenCode configuration
-- **Plugin Management**: Check which plugins are installed and what's missing
-- **Cross-platform**: Works on Linux and macOS
-- **CLI-first**: Simple command-line interface with short aliases
+- **Presets**: Global plugin combinations and agent setups for different workflows.
+- **Profiles**: Project-specific configurations (local overrides) for focused development.
+- **Deep Visibility**: Detailed information about active agents, models, and plugins.
+- **Backup & Restore**: Safely backup and restore your OpenCode configuration.
+- **Plugin Management**: Check which plugins are installed and what's missing.
+- **Cross-platform**: Works on Linux and macOS.
+- **CLI-first**: Simple command-line interface with short aliases (`ocl`).
 
 ## Quick Start
 
@@ -38,21 +39,17 @@ chmod +x install.sh
 
 ```bash
 # List available presets
-opencode-loadout list
-# or short version
 ocl list
 
-# Switch to a preset
-opencode-loadout switch omo
+# Switch to a preset (Global)
 ocl switch omo-full
 
-# See current configuration
-opencode-loadout current
+# See current configuration (Global + Local)
 ocl current
 
-# Get preset details
-opencode-loadout info omo
-ocl info orchestra
+# Get detailed info about a preset or profile
+ocl info omo-full
+ocl profile info frontend-heavy
 ```
 
 ## Available Presets
@@ -61,502 +58,72 @@ ocl info orchestra
 |--------|-------------|---------|
 | `core` | Vanilla OpenCode (no plugins) | - |
 | `omo` | Oh-My-OpenCode with Sisyphus orchestrator | `oh-my-opencode` |
-| `omo-full` | Oh-My-OpenCode with all agents and features | `oh-my-opencode`, `opencode-frontend`, `opencode-backend` |
+| `omo-full` | Full OMO setup with all agents enabled | `oh-my-opencode` |
 | `orchestra` | Open Orchestra multi-agent system | `opencode-orchestrator` |
 
-## Feasibility Analysis
+## Detailed Commands
 
-### OpenCode Core
+### Presets (Global)
 
-✅ **Fully Supported**
+- **`ocl list`**: List all available global presets.
+- **`ocl switch <preset>`**: Switch your global OpenCode configuration.
+- **`ocl info <preset>`**: Show detailed information about a preset, including which agents and models are configured.
+- **`ocl save <name>`**: Save your current global configuration as a new preset.
 
-- Pure OpenCode with no plugins
-- Just needs to ensure `plugin` array is empty or contains only core plugins
-- Configuration: `~/.config/opencode/opencode.json`
+### Profiles (Project-Specific)
 
-### Oh-My-OpenCode
+Profiles allow you to have different agent configurations for different projects (e.g., Gemini for frontend, Claude for backend).
 
-✅ **Fully Supported**
+- **`ocl profile list`**: List available project profiles.
+- **`ocl profile info <name>`**: Show detailed agent configuration for a profile, including disabled agents.
+- **`ocl profile use <name>`**: Apply a profile to the **current directory**. This creates a `.opencode/oh-my-opencode.json` file.
+- **`ocl init [preset]`**: Initialize a project directory with a default configuration.
 
-OMO is a **pure configuration plugin**:
+### System
 
-- Installed via: `bunx oh-my-opencode install`
-- Registered in: `~/.config/opencode/opencode.json` → `plugin: ["oh-my-opencode"]`
-- Config files:
-  - `~/.config/opencode/oh-my-opencode.json` (global config)
-  - `.opencode/oh-my-opencode.json` (project-specific config)
-- No binary changes, just configuration swaps
+- **`ocl current`**: Show active configuration. It detects if a **Local Profile** is active and shows its specific agent settings, otherwise shows the global preset settings.
+- **`ocl check-plugins`**: Verify which plugins are installed on your system.
+- **`ocl verify`**: Check the integrity of your OpenCode Loadout installation.
+- **`ocl restore [backup]`**: Restore a previous configuration from the `backups/` directory.
 
-**Multi-profile support**: OMO supports project-specific configs via `.opencode/oh-my-opencode.json`. This means we can:
-- Create profiles like `frontend-project.json`, `backend-project.json`
-- Switch them by symlinking or copying
-- Each profile can have different agents, models, and settings enabled/disabled
+## Development
 
-### Open Orchestra
-
-✅ **Fully Supported**
-
-Open Orchestra is also a **configuration-based plugin**:
-
-- Installed via: `bun add opencode-orchestrator`
-- Registered in: `~/.config/opencode/opencode.json` → `plugin: ["opencode-orchestrator"]`
-- Config files:
-  - `orchestrator.json` or `.opencode/orchestrator.json`
-- Provides 6 worker profiles: vision, docs, coder, architect, explorer, memory
-- All managed through configuration, no binary changes
-
-**Combination potential**: You can potentially run OMO + Open Orchestra together for maximum orchestration capabilities!
-
-## Installation
-
-### Prerequisites
+If you want to contribute or modify the tool locally:
 
 ```bash
-# Check OpenCode is installed
-opencode --version
+# Clone the repository
+git clone https://github.com/DiegoFdezAb/opencode-loadout.git
 
-# Check Bun is installed (for OMO)
-bun --version
-
-# Check jq is installed (required for JSON parsing)
-jq --version
+# Make your changes, then install locally
+./dev-install.sh
 ```
 
-Install jq:
-```bash
-# macOS
-brew install jq
-
-# Ubuntu/Debian
-sudo apt install jq
-
-# Fedora/RedHat
-sudo dnf install jq
-
-# Arch
-sudo pacman -S jq
-```
-
-### Install OpenCode Loadout
-
-```bash
-# Clone repo
-git clone https://github.com/DiegoFdezAb/opencode-loadout.git ~/.opencode-loadout
-
-# Add to PATH (add to ~/.bashrc or ~/.zshrc)
-export PATH="$HOME/.opencode-loadout:$PATH"
-```
-
-Now you can use either the full name or the abbreviation:
-
-```bash
-# Full name
-opencode-loadout switch omo
-
-# Abbreviation (recommended)
-ocl switch omo
-```
-
-Reload your shell:
-```bash
-source ~/.bashrc   # or ~/.zshrc
-```
-
-## Usage
-
-### List Available Presets
-
-```bash
-opencode-loadout list
-# or
-ocl list
-```
-
-Output:
-```
-Available presets:
-
-  core                Vanilla OpenCode (no plugins)
-  omo                 Oh-My-OpenCode with Sisyphus orchestrator
-  omo-full            Oh-My-OpenCode with all agents and features
-  orchestra           Open Orchestra multi-agent system
-  omo-orchestra       EXPERIMENTAL - Combined OMO + Open Orchestra
-```
-
-### Switch to a Preset
-
-```bash
-# Switch to OMO (full name or abbreviation)
-opencode-loadout switch omo
-ocl switch omo
-
-# Switch to Open Orchestra
-opencode-loadout switch orchestra
-ocl switch orchestra
-
-# Switch to vanilla OpenCode
-opencode-loadout switch core
-ocl switch core
-```
-
-This will:
-1. Backup your current configuration
-2. Check if required plugins are installed
-3. Update `~/.config/opencode/opencode.json`
-4. Show summary of changes
-
-### Check Current Preset
-
-```bash
-opencode-loadout current
-# or
-ocl current
-```
-
-Output:
-```
-[SUCCESS] Current preset: omo
-[INFO] Active plugins:
-  - oh-my-opencode
-```
-
-### Check Installed Plugins
-
-Check which plugins are installed and which presets can be used:
-
-```bash
-opencode-loadout check-plugins
-# or
-ocl check-plugins
-```
-
-Output:
-```
-[INFO] Checking installed plugins...
-[INFO] Installed plugins:
-  ✓ oh-my-opencode
-
-[INFO] Required plugins for presets:
-  omo: ✓ oh-my-opencode
-  orchestra: ✗ opencode-orchestrator
-  [WARN]   Missing 1 plugin(s)
-```
-
-### Switch Without Plugins Installed
-
-If you try to switch to a preset whose plugins aren't installed, you'll get an error:
-
-```bash
-opencode-loadout switch orchestra
-# or
-ocl switch orchestra
-```
-
-Output:
-```
-[ERROR] Plugin(s) non installé(s):
-  - opencode-orchestrator
-[INFO]   Installation: bun add opencode-orchestrator
-```
-
-### Create Custom Preset
-
-```bash
-# Copy an existing preset as a template
-cp ~/.opencode-loadout/presets/omo-full.json ~/.opencode-loadout/presets/my-custom.json
-
-# Edit it
-vim ~/.opencode-loadout/presets/my-custom.json
-
-# Switch to it
-opencode-loadout switch my-custom
-# or
-ocl switch my-custom
-```
-
-### View Preset Details
-
-```bash
-opencode-loadout info omo-full
-# or
-ocl info omo-full
-```
-
-## Project-Specific Profiles
-
-For OMO, you can have different configurations per project:
-
-### Setup
-
-```bash
-# In your project directory
-cd ~/projects/my-frontend-app
-
-# Initialize project-specific OMO config
-opencode-loadout init omo
-# or
-ocl init omo
-```
-
-This creates `.opencode/oh-my-opencode.json` with project-specific settings.
-
-### Predefined Project Profiles
-
-Create profiles like:
-
-```bash
-~/.opencode-loadout/profiles/
-├── frontend-heavy.json    # Gemini for UI, Claude for logic
-├── backend-api.json       # Claude for API, GPT for docs
-├── full-stack.json        # All models balanced
-└── research-mode.json     # Emphasis on librarian/explore
-```
-
-### Use Project Profile
-
-```bash
-cd ~/projects/my-app
-opencode-loadout profile use frontend-heavy
-# or
-ocl profile use frontend-heavy
-```
-
-### View Available Profiles
-
-```bash
-opencode-loadout profile list
-# or
-ocl profile list
-```
+`dev-install.sh` will install the binary and configurations from your local folder directly to your system path.
 
 ## Preset Directory Structure
 
 ```
-~/.opencode-loadout/
+~/.config/opencode-loadout/
 ├── presets/                 # Global preset configurations
-│   ├── core.json
-│   ├── omo.json
-│   ├── omo-full.json
-│   ├── orchestra.json
-│   └── omo-orchestra.json
-├── profiles/                # Project-specific profiles
-│   ├── frontend-heavy.json
-│   ├── backend-api.json
-│   ├── full-stack.json
-│   └── research-mode.json
-├── backups/                 # Backup configs
-│   └── backup-2025-01-15.json
-├── opencode-loadout         # Main CLI script
-├── ocl                     # Symlink to opencode-loadout
-└── config.json              # OpenCode Loadout settings
+├── profiles/                # Project-specific templates
+├── schema/                  # JSON Schemas for validation
+├── backups/                 # Automatic configuration backups
+├── .state                   # Current active preset tracker
+└── config.json              # Global tool settings
 ```
-
-## Configuration
-
-### Global Config
-
-`~/.opencode-loadout/config.json`:
-
-```json
-{
-  "$schema": "./schema/presets.schema.json",
-  "defaultPreset": "none",
-  "autoBackup": true,
-  "backupDir": "~/.opencode-loadout/backups",
-  "opencodeConfigPath": "~/.config/opencode/opencode.json",
-  "plugins": {
-    "oh-my-opencode": {
-      "installCmd": "bunx oh-my-opencode install",
-      "configPath": "~/.config/opencode/oh-my-opencode.json"
-    },
-    "opencode-orchestrator": {
-      "installCmd": "bun add opencode-orchestrator",
-      "configPath": "~/.config/opencode/opencode.json"
-    }
-  }
-}
-```
-
-### Preset Schema
-
-Each preset in `presets/*.json`:
-
-```json
-{
-  "$schema": "../schema/preset.schema.json",
-  "name": "omo-full",
-  "description": "Oh-My-OpenCode with all features enabled",
-  "plugins": ["oh-my-opencode"],
-  "requires": {
-    "oh-my-opencode": "latest"
-  },
-  "config": {
-    "opencode": {
-      "plugin": ["oh-my-opencode"]
-    },
-    "omo": {
-      "sisyphus_agent": {
-        "disabled": false,
-        "builder_enabled": true,
-        "planner_enabled": true
-      },
-      "agents": {
-        "oracle": { "model": "openai/gpt-5.2" },
-        "librarian": { "model": "anthropic/claude-sonnet-4-5" }
-      }
-    }
-  }
-}
-```
-
-### Project Profile Schema
-
-`profiles/*.json`:
-
-```json
-{
-  "$schema": "../schema/profile.schema.json",
-  "name": "frontend-heavy",
-  "description": "Optimized for frontend development",
-  "omo": {
-    "agents": {
-      "frontend-ui-ux-engineer": { "model": "google/gemini-3-pro-high" },
-      "oracle": { "model": "google/gemini-3-pro-medium" }
-    },
-    "disabled_agents": ["librarian", "explore"],
-    "disabled_hooks": ["comment-checker"]
-  }
-}
-```
-
-## Advanced Workflows
-
-### Quick Start with Different Setups
-
-```bash
-# Morning: Research phase - use librarian/explore
-opencode-loadout switch omo-research
-ocl switch omo-research
-
-# Afternoon: Implementation - use Sisyphus with all agents
-opencode-loadout switch omo-full
-ocl switch omo-full
-
-# Evening: Light coding - use vanilla OpenCode
-opencode-loadout switch core
-ocl switch core
-```
-
-### Multi-Project Setup
-
-```bash
-# Project A: Frontend with Gemini
-cd ~/projects/frontend-app
-opencode-loadout profile use frontend-heavy
-ocl profile use frontend-heavy
-
-# Project B: Backend with Claude
-cd ~/projects/backend-api
-opencode-loadout profile use backend-api
-ocl profile use backend-api
-
-# Project C: Full stack
-cd ~/projects/monolith
-opencode-loadout profile use full-stack
-ocl profile use full-stack
-```
-
-### Restore from Backup
-
-```bash
-opencode-loadout restore
-opencode-loadout restore --list  # List all backups
-opencode-loadout restore backup-2025-01-15.json  # Restore specific
-
-# Or using abbreviation
-ocl restore
-ocl restore --list
-ocl restore backup-2025-01-15.json
-```
-
-### Verify Setup
-
-```bash
-opencode-loadout verify
-# or
-ocl verify
-```
-
-This checks:
-- OpenCode version
-- Plugin installation status
-- Config file syntax
-- Required dependencies
-
-## Troubleshooting
-
-### Plugin not loading
-
-```bash
-# Check if plugin is installed
-opencode-loadout check-plugins
-ocl check-plugins
-
-# Install missing plugin
-bunx oh-my-opencode install  # For OMO
-bun add opencode-orchestrator     # For Orchestra
-```
-
-### Config got messed up
-
-```bash
-# Restore from backup
-opencode-loadout restore
-ocl restore
-```
-
-### Verify current setup
-
-```bash
-opencode-loadout verify
-ocl verify
-```
-
-## Future Enhancements
 
 ## Contributing
 
-Want to add a preset? Submit a PR!
+Want to add a preset or a profile? Submit a PR!
 
-```bash
-# Fork the repo
-git clone https://github.com/DiegoFdezAb/opencode-loadout.git
-
-# Add your preset
-vim presets/my-awesome-preset.json
-
-# Test it
-opencode-loadout switch my-awesome-preset
-ocl switch my-awesome-preset
-
-# PR!
-```
+1. Fork the repo.
+2. Add your JSON file to `presets/` or `profiles/`.
+3. Test it using `./dev-install.sh`.
+4. Open a Pull Request!
 
 ## License
 
 MIT License - see LICENSE file
-
-## Acknowledgments
-
-- **OpenCode** - https://github.com/sst/opencode
-- **Oh-My-OpenCode** - https://github.com/code-yeongyu/oh-my-opencode
-- **Open Orchestra** - https://github.com/0xSero/open-orchestra
-
-## Related Projects
-
-- [sst/opencode](https://github.com/sst/opencode) - The core OpenCode project
-- [code-yeongyu/oh-my-opencode](https://github.com/code-yeongyu/oh-my-opencode) - Full-featured OMO plugin
-- [0xSero/open-orchestra](https://github.com/0xSero/open-orchestra) - Multi-agent orchestration
 
 ---
 

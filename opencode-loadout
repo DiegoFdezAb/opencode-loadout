@@ -126,7 +126,7 @@ get_plugin_install_cmd() {
       echo "bunx oh-my-opencode install"
       ;;
     "opencode-orchestrator")
-      echo "bun add opencode-orchestrator"
+      echo "in project 'bun add opencode-orchestrator' or globally 'bun add -g opencode-orchestrator'"
       ;;
     *)
       echo "npm install $plugin_name"
@@ -267,15 +267,15 @@ switch() {
   if [[ "$current_preset" == "none" ]]; then
     log_warn "Current preset not saved"
     
-    # Confirmation y/n (stocké dans $REPLY)
+    # Confirmation y/n (stored in $REPLY)
     read -p "Do you want to save this as a new preset? (y/n) " -n 1 -r
     echo
     
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        # Demander le nom et stocker dans la variable preset_name
+        # Ask for name and store in preset_name variable
         read -p "Enter preset name: " preset_name
         
-        # Maintenant $preset_name contient le nom entré par l'utilisateur
+        # Now $preset_name contains the name entered by the user
         if [[ -n "$preset_name" ]]; then
             save "$preset_name"
             log_success "Preset saved: $preset_name"
@@ -321,18 +321,18 @@ switch() {
   done < <(jq -r '.plugins[] // empty' "$preset_file")
 
   if [[ ${#missing_plugins[@]} -gt 0 ]]; then
-    log_warn "Plugin(s) non installé(s) ou version différente :"
+    log_warn "Plugin(s) not installed or different version:"
     for plugin in "${missing_plugins[@]}"; do
       local install_cmd
       install_cmd=$(get_plugin_install_cmd "$plugin")
       echo "  - $plugin"
-      log_info "  Installation recommandée : $install_cmd"
+      log_info "  Recommended installation: $install_cmd"
     done
     
-    read -p "Souhaitez-vous continuer le switch quand même ? (y/n) " -n 1 -r
+    read -p "Do you want to continue the switch anyway? (y/n) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-      log_info "Switch annulé"
+      log_info "Switch cancelled"
       exit 1
     fi
   fi
