@@ -14,6 +14,7 @@ PRESETS_DIR="${OPENCODE_LOADOUT_DIR:-$HOME/.config/opencode-loadout/presets}"
 PROFILES_DIR="${OPENCODE_PROFILES_DIR:-$HOME/.config/opencode-loadout/profiles}"
 BACKUPS_DIR="${OPENCODE_BACKUPS_DIR:-$HOME/.config/opencode-loadout/backups}"
 OPENCODE_CONFIG="${OPENCODE_CONFIG_PATH:-$HOME/.config/opencode/opencode.json}"
+OMO_CONFIG="${OMO_CONFIG_PATH:-$HOME/.config/opencode/oh-my-opencode.json}"
 STATE_FILE="${OPENCODE_LOADOUT_STATE:-$HOME/.config/opencode-loadout/.state}"
 
 # Colors
@@ -358,6 +359,16 @@ switch() {
     mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
   fi
 
+  # Update Oh-My-OpenCode config
+  local omo_config
+  omo_config=$(jq -c '.config.omo // empty' "$preset_file")
+  
+  if [[ -n "$omo_config" ]] && [[ "$omo_config" != "null" ]] && [[ "$omo_config" != "{}" ]]; then
+    mkdir -p "$(dirname "$OMO_CONFIG")"
+    echo "{ \"omo\": $omo_config }" | jq '.' > "$OMO_CONFIG"
+    log_info "Updated Oh-My-OpenCode configuration"
+  fi
+
   # Save current preset to state
   set_state_preset "$preset_name"
 
@@ -526,15 +537,27 @@ save() {
     plugins_json=$(jq -c '.plugin // []' "$OPENCODE_CONFIG")
   fi
 
+  # Get current OMO config
+  local omo_config="{}"
+  if [[ -f "$OMO_CONFIG" ]]; then
+    omo_config=$(jq -c '.omo // {}' "$OMO_CONFIG")
+  fi
+
   # Create preset JSON
-  cat > "$preset_file" << EOF
-{
-  "name": "$preset_name",
-  "description": "$description",
-  "plugins": $plugins_json,
-  "requires": {}
-}
-EOF
+  jq -n \
+    --arg name "$preset_name" \
+    --arg desc "$description" \
+    --argjson plugins "$plugins_json" \
+    --argjson omo "$omo_config" \
+    '{
+      name: $name,
+      description: $desc,
+      plugins: $plugins,
+      config: {
+        omo: $omo
+      },
+      requires: {}
+    }' > "$preset_file"
 
   log_success "Preset saved: $preset_name"
   log_info "Location: $preset_file"
