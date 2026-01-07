@@ -304,7 +304,7 @@ current() {
     fi
   fi
 
-  # 2. Agent Status (Local Profile vs Global Preset)
+  # 2. Agent Status (Local Profile vs Global Preset vs Global OMO config)
   local omo_local=".opencode/oh-my-opencode.json"
   if [[ -f "$omo_local" ]]; then
     echo -e "\n${GREEN}[LOCAL PROFILE ACTIVE]${NC} (overrides global settings)"
@@ -324,6 +324,22 @@ current() {
         echo -e "\n${YELLOW}Defined Agents (from $current preset):${NC}"
         jq -r '.config.omo.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$preset_file"
       fi
+      if jq -e '.config.omo.disabled_agents' "$preset_file" >/dev/null 2>&1; then
+        local disabled
+        disabled=$(jq -r '.config.omo.disabled_agents | join(", ")' "$preset_file")
+        [[ -n "$disabled" ]] && echo -e "${RED}Disabled Agents:${NC} $disabled"
+      fi
+    fi
+  elif [[ -f "$OMO_CONFIG" ]]; then
+    # No preset active but global OMO config exists
+    if jq -e '.omo.agents' "$OMO_CONFIG" >/dev/null 2>&1; then
+      echo -e "\n${YELLOW}Defined Agents (global, unsaved):${NC}"
+      jq -r '.omo.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$OMO_CONFIG"
+    fi
+    if jq -e '.omo.disabled_agents' "$OMO_CONFIG" >/dev/null 2>&1; then
+      local disabled
+      disabled=$(jq -r '.omo.disabled_agents | join(", ")' "$OMO_CONFIG")
+      [[ -n "$disabled" ]] && echo -e "${RED}Disabled Agents:${NC} $disabled"
     fi
   fi
 }
@@ -581,6 +597,15 @@ info() {
   if jq -e '.config.omo.agents' "$preset_file" >/dev/null 2>&1; then
     echo -e "\n${YELLOW}Defined Agents:${NC}"
     jq -r '.config.omo.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$preset_file"
+  else
+    echo -e "\n${YELLOW}Defined Agents:${NC} None (uses defaults)"
+  fi
+  
+  # Disabled agents
+  if jq -e '.config.omo.disabled_agents | length > 0' "$preset_file" >/dev/null 2>&1; then
+    local disabled
+    disabled=$(jq -r '.config.omo.disabled_agents | join(", ")' "$preset_file")
+    echo -e "${RED}Disabled Agents:${NC} $disabled"
   fi
   
   # Sisyphus specific
