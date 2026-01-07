@@ -74,6 +74,80 @@ set_state_preset() {
   mv "${STATE_FILE}.tmp" "$STATE_FILE"
 }
 
+# Check if current OMO config differs from saved preset
+has_unsaved_omo_changes() {
+  local current_preset
+  current_preset=$(get_state_preset)
+  
+  # If no preset active, can't compare
+  if [[ "$current_preset" == "none" ]]; then
+    # Check if there's any OMO config at all
+    if [[ -f "$OMO_CONFIG" ]]; then
+      local current_omo
+      current_omo=$(jq -c '.omo // {}' "$OMO_CONFIG" 2>/dev/null)
+      if [[ -n "$current_omo" ]] && [[ "$current_omo" != "{}" ]] && [[ "$current_omo" != "null" ]]; then
+        return 0  # Has unsaved changes
+      fi
+    fi
+    return 1  # No changes
+  fi
+  
+  local preset_file="$PRESETS_DIR/${current_preset}.json"
+  if [[ ! -f "$preset_file" ]]; then
+    return 1  # Preset doesn't exist, nothing to compare
+  fi
+  
+  # Get saved OMO config from preset
+  local saved_omo
+  saved_omo=$(jq -c '.config.omo // {}' "$preset_file" 2>/dev/null)
+  
+  # Get current OMO config
+  local current_omo="{}"
+  if [[ -f "$OMO_CONFIG" ]]; then
+    current_omo=$(jq -c '.omo // {}' "$OMO_CONFIG" 2>/dev/null)
+  fi
+  
+  # Compare
+  if [[ "$saved_omo" != "$current_omo" ]]; then
+    return 0  # Has changes
+  fi
+  
+  return 1  # No changes
+}
+
+# Show diff between current and saved OMO config
+show_omo_diff() {
+  local current_preset
+  current_preset=$(get_state_preset)
+  
+  local saved_agents="{}"
+  if [[ "$current_preset" != "none" ]]; then
+    local preset_file="$PRESETS_DIR/${current_preset}.json"
+    if [[ -f "$preset_file" ]]; then
+      saved_agents=$(jq -c '.config.omo.agents // {}' "$preset_file" 2>/dev/null)
+    fi
+  fi
+  
+  local current_agents="{}"
+  if [[ -f "$OMO_CONFIG" ]]; then
+    current_agents=$(jq -c '.omo.agents // {}' "$OMO_CONFIG" 2>/dev/null)
+  fi
+  
+  echo -e "${YELLOW}Agent differences detected:${NC}"
+  
+  # Show current agents
+  if [[ "$current_agents" != "{}" ]] && [[ -n "$current_agents" ]]; then
+    echo -e "${BLUE}Current agents:${NC}"
+    echo "$current_agents" | jq -r 'to_entries[] | "  - \(.key): \(.value.model)"' 2>/dev/null
+  fi
+  
+  # Show saved agents (if any)
+  if [[ "$saved_agents" != "{}" ]] && [[ -n "$saved_agents" ]] && [[ "$current_preset" != "none" ]]; then
+    echo -e "${BLUE}Saved in preset '$current_preset':${NC}"
+    echo "$saved_agents" | jq -r 'to_entries[] | "  - \(.key): \(.value.model)"' 2>/dev/null
+  fi
+}
+
 # Check if OpenCode is installed
 check_opencode() {
   if ! command_exists opencode; then
@@ -273,18 +347,34 @@ switch() {
     echo
     
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        # Ask for name and store in preset_name variable
-        read -p "Enter preset name: " preset_name
+        # Ask for name and store in save_name variable
+        read -p "Enter preset name: " save_name
         
-        # Now $preset_name contains the name entered by the user
-        if [[ -n "$preset_name" ]]; then
-            save "$preset_name"
-            log_success "Preset saved: $preset_name"
+        if [[ -n "$save_name" ]]; then
+            save "$save_name"
+            log_success "Preset saved: $save_name"
         else
             log_error "Preset name cannot be empty"
         fi
     else
         log_info "Skipping save"
+    fi
+  elif has_unsaved_omo_changes; then
+    log_warn "Your current OMO configuration differs from preset '$current_preset'"
+    show_omo_diff
+    echo ""
+    read -p "Do you want to save changes before switching? (y/n) " -n 1 -r
+    echo
+    
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+      read -p "Save as '$current_preset' (overwrite) or new name? [enter for overwrite]: " save_name
+      if [[ -z "$save_name" ]]; then
+        save_name="$current_preset"
+      fi
+      save "$save_name"
+      log_success "Preset saved: $save_name"
+    else
+      log_info "Discarding unsaved changes"
     fi
   fi
 
