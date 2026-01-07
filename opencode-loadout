@@ -363,7 +363,7 @@ switch() {
   local omo_config
   omo_config=$(jq -c '.config.omo // empty' "$preset_file")
   
-  if [[ -n "$omo_config" ]] && [[ "$omo_config" != "null" ]] && [[ "$omo_config" != "{}" ]]; then
+  if [[ -n "$omo_config" ]] && [[ "$omo_config" != "null" ]]; then
     mkdir -p "$(dirname "$OMO_CONFIG")"
     echo "{ \"omo\": $omo_config }" | jq '.' > "$OMO_CONFIG"
     log_info "Updated Oh-My-OpenCode configuration"
