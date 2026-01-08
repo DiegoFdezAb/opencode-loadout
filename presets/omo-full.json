@@ -11,6 +11,8 @@
       "plugin": ["oh-my-opencode"]
     },
     "omo": {
+      "$schema": "https://raw.githubusercontent.com/code-yeongyu/oh-my-opencode/master/assets/oh-my-opencode.schema.json",
+      "google_auth": true,
       "sisyphus_agent": {
         "disabled": false,
         "builder_enabled": true,
@@ -50,8 +52,7 @@
       },
       "disabled_agents": [],
       "disabled_hooks": [],
-      "disabled_mcps": [],
-      "google_auth": true
+      "disabled_mcps": []
     }
   }
 }

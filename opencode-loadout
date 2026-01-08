@@ -14,6 +14,7 @@ PRESETS_DIR="${OPENCODE_LOADOUT_DIR:-$HOME/.config/opencode-loadout/presets}"
 PROFILES_DIR="${OPENCODE_PROFILES_DIR:-$HOME/.config/opencode-loadout/profiles}"
 BACKUPS_DIR="${OPENCODE_BACKUPS_DIR:-$HOME/.config/opencode-loadout/backups}"
 OPENCODE_CONFIG="${OPENCODE_CONFIG_PATH:-$HOME/.config/opencode/opencode.json}"
+OMO_CONFIG="${OMO_CONFIG_PATH:-$HOME/.config/opencode/oh-my-opencode.json}"
 STATE_FILE="${OPENCODE_LOADOUT_STATE:-$HOME/.config/opencode-loadout/.state}"
 
 # Colors
@@ -71,6 +72,85 @@ set_state_preset() {
   init_state
   jq --arg preset "$preset_name" '.current_preset = $preset' "$STATE_FILE" > "${STATE_FILE}.tmp"
   mv "${STATE_FILE}.tmp" "$STATE_FILE"
+}
+
+# Check if current OMO config differs from saved preset
+has_unsaved_omo_changes() {
+  local current_preset
+  current_preset=$(get_state_preset)
+  
+  # If no preset active, can't compare
+  if [[ "$current_preset" == "none" ]]; then
+    # Check if there's any OMO config at all
+    if [[ -f "$OMO_CONFIG" ]]; then
+      local current_omo
+      current_omo=$(jq -c '.' "$OMO_CONFIG" 2>/dev/null)
+      if [[ -n "$current_omo" ]] && [[ "$current_omo" != "{}" ]] && [[ "$current_omo" != "null" ]]; then
+        return 0  # Has unsaved changes
+      fi
+    fi
+    return 1  # No changes
+  fi
+  
+  local preset_file="$PRESETS_DIR/${current_preset}.json"
+  if [[ ! -f "$preset_file" ]]; then
+    return 1  # Preset doesn't exist, nothing to compare
+  fi
+  
+  # Get saved OMO config from preset
+  local saved_omo
+  saved_omo=$(jq -c '.config.omo // empty' "$preset_file" 2>/dev/null)
+
+  # If the current preset doesn't store OMO config (legacy preset), don't prompt
+  if [[ -z "$saved_omo" ]] || [[ "$saved_omo" == "null" ]]; then
+    return 1
+  fi
+
+  # Get current OMO config
+  local current_omo="{}"
+  if [[ -f "$OMO_CONFIG" ]]; then
+    current_omo=$(jq -c '.' "$OMO_CONFIG" 2>/dev/null)
+  fi
+
+  # Compare
+  if [[ "$saved_omo" != "$current_omo" ]]; then
+    return 0  # Has changes
+  fi
+  
+  return 1  # No changes
+}
+
+# Show diff between current and saved OMO config
+show_omo_diff() {
+  local current_preset
+  current_preset=$(get_state_preset)
+  
+  local saved_agents="{}"
+  if [[ "$current_preset" != "none" ]]; then
+    local preset_file="$PRESETS_DIR/${current_preset}.json"
+    if [[ -f "$preset_file" ]]; then
+      saved_agents=$(jq -c '.config.omo.agents // {}' "$preset_file" 2>/dev/null)
+    fi
+  fi
+  
+  local current_agents="{}"
+  if [[ -f "$OMO_CONFIG" ]]; then
+    current_agents=$(jq -c '.agents // {}' "$OMO_CONFIG" 2>/dev/null)
+  fi
+  
+  echo -e "${YELLOW}Agent differences detected:${NC}"
+  
+  # Show current agents
+  if [[ "$current_agents" != "{}" ]] && [[ -n "$current_agents" ]]; then
+    echo -e "${BLUE}Current agents:${NC}"
+    echo "$current_agents" | jq -r 'to_entries[] | "  - \(.key): \(.value.model)"' 2>/dev/null
+  fi
+  
+  # Show saved agents (if any)
+  if [[ "$saved_agents" != "{}" ]] && [[ -n "$saved_agents" ]] && [[ "$current_preset" != "none" ]]; then
+    echo -e "${BLUE}Saved in preset '$current_preset':${NC}"
+    echo "$saved_agents" | jq -r 'to_entries[] | "  - \(.key): \(.value.model)"' 2>/dev/null
+  fi
 }
 
 # Check if OpenCode is installed
@@ -177,7 +257,7 @@ list_presets() {
 get_current_preset() {
   local state_preset
   state_preset=$(get_state_preset)
-  
+
   # Validate that the state preset matches the actual config
   if [[ "$state_preset" != "none" ]]; then
     local preset_file="$PRESETS_DIR/${state_preset}.json"
@@ -185,13 +265,13 @@ get_current_preset() {
       # Get plugins from preset file
       local preset_plugins
       preset_plugins=$(jq -c '.plugins // []' "$preset_file")
-      
+
       # Get plugins from actual config
       local actual_plugins="[]"
       if [[ -f "$OPENCODE_CONFIG" ]]; then
         actual_plugins=$(jq -c '.plugin // []' "$OPENCODE_CONFIG")
       fi
-      
+
       # Compare
       if [[ "$preset_plugins" != "$actual_plugins" ]]; then
         # Config doesn't match - reset to none
@@ -200,9 +280,27 @@ get_current_preset() {
         echo "none"
         return
       fi
+
+      # If preset expects OMO config, ensure it still matches
+      if jq -e '.config.omo' "$preset_file" >/dev/null 2>&1; then
+        local preset_omo
+        preset_omo=$(jq -c '.config.omo' "$preset_file" 2>/dev/null)
+
+        local actual_omo="{}"
+        if [[ -f "$OMO_CONFIG" ]]; then
+          actual_omo=$(jq -c '.' "$OMO_CONFIG" 2>/dev/null)
+        fi
+
+        if [[ "$preset_omo" != "$actual_omo" ]]; then
+          log_warn "State preset ($state_preset) OMO config doesn't match actual oh-my-opencode.json - resetting to none"
+          set_state_preset "none"
+          echo "none"
+          return
+        fi
+      fi
     fi
   fi
-  
+
   echo "$state_preset"
 }
 
@@ -229,26 +327,51 @@ current() {
     fi
   fi
 
-  # 2. Agent Status (Local Profile vs Global Preset)
+  # 2. Agent Status (Local Profile vs Global Preset vs Global OMO config)
   local omo_local=".opencode/oh-my-opencode.json"
   if [[ -f "$omo_local" ]]; then
     echo -e "\n${GREEN}[LOCAL PROFILE ACTIVE]${NC} (overrides global settings)"
-    if jq -e '.omo.agents' "$omo_local" >/dev/null 2>&1; then
+    if jq -e '.agents' "$omo_local" >/dev/null 2>&1; then
       echo -e "${YELLOW}Defined Agents (Local):${NC}"
-      jq -r '.omo.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$omo_local"
+      jq -r '.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$omo_local"
     fi
-    if jq -e '.omo.disabled_agents' "$omo_local" >/dev/null 2>&1; then
+    if jq -e '.disabled_agents' "$omo_local" >/dev/null 2>&1; then
       local disabled
-      disabled=$(jq -r '.omo.disabled_agents | join(", ")' "$omo_local")
+      disabled=$(jq -r '.disabled_agents | join(", ")' "$omo_local")
       [[ -n "$disabled" ]] && echo -e "${RED}Disabled Agents (Local):${NC} $disabled"
     fi
   elif [[ "$current" != "none" ]]; then
     local preset_file="$PRESETS_DIR/${current}.json"
     if [[ -f "$preset_file" ]]; then
+      # Prefer explicit agents list from preset, fallback to global OMO config
       if jq -e '.config.omo.agents' "$preset_file" >/dev/null 2>&1; then
         echo -e "\n${YELLOW}Defined Agents (from $current preset):${NC}"
         jq -r '.config.omo.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$preset_file"
+      elif [[ -f "$OMO_CONFIG" ]] && jq -e '.agents' "$OMO_CONFIG" >/dev/null 2>&1; then
+        echo -e "\n${YELLOW}Defined Agents (from global oh-my-opencode.json):${NC}"
+        jq -r '.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$OMO_CONFIG"
       fi
+
+      if jq -e '.config.omo.disabled_agents' "$preset_file" >/dev/null 2>&1; then
+        local disabled
+        disabled=$(jq -r '.config.omo.disabled_agents | join(", ")' "$preset_file")
+        [[ -n "$disabled" ]] && echo -e "${RED}Disabled Agents:${NC} $disabled"
+      elif [[ -f "$OMO_CONFIG" ]] && jq -e '.disabled_agents' "$OMO_CONFIG" >/dev/null 2>&1; then
+        local disabled
+        disabled=$(jq -r '.disabled_agents | join(", ")' "$OMO_CONFIG")
+        [[ -n "$disabled" ]] && echo -e "${RED}Disabled Agents:${NC} $disabled"
+      fi
+    fi
+  elif [[ -f "$OMO_CONFIG" ]]; then
+    # No preset active but global OMO config exists
+    if jq -e '.agents' "$OMO_CONFIG" >/dev/null 2>&1; then
+      echo -e "\n${YELLOW}Defined Agents (global, unsaved):${NC}"
+      jq -r '.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$OMO_CONFIG"
+    fi
+    if jq -e '.disabled_agents' "$OMO_CONFIG" >/dev/null 2>&1; then
+      local disabled
+      disabled=$(jq -r '.disabled_agents | join(", ")' "$OMO_CONFIG")
+      [[ -n "$disabled" ]] && echo -e "${RED}Disabled Agents:${NC} $disabled"
     fi
   fi
 }
@@ -272,18 +395,34 @@ switch() {
     echo
     
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        # Ask for name and store in preset_name variable
-        read -p "Enter preset name: " preset_name
+        # Ask for name and store in save_name variable
+        read -p "Enter preset name: " save_name
         
-        # Now $preset_name contains the name entered by the user
-        if [[ -n "$preset_name" ]]; then
-            save "$preset_name"
-            log_success "Preset saved: $preset_name"
+        if [[ -n "$save_name" ]]; then
+            save "$save_name"
+            log_success "Preset saved: $save_name"
         else
             log_error "Preset name cannot be empty"
         fi
     else
         log_info "Skipping save"
+    fi
+  elif has_unsaved_omo_changes; then
+    log_warn "Your current OMO configuration differs from preset '$current_preset'"
+    show_omo_diff
+    echo ""
+    read -p "Do you want to save changes before switching? (y/n) " -n 1 -r
+    echo
+    
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+      read -p "Save as '$current_preset' (overwrite) or new name? [enter for overwrite]: " save_name
+      if [[ -z "$save_name" ]]; then
+        save_name="$current_preset"
+      fi
+      save "$save_name"
+      log_success "Preset saved: $save_name"
+    else
+      log_info "Discarding unsaved changes"
     fi
   fi
 
@@ -358,6 +497,16 @@ switch() {
     mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
   fi
 
+  # Update Oh-My-OpenCode config (write full file from preset)
+  local omo_config
+  omo_config=$(jq -c '.config.omo // empty' "$preset_file" 2>/dev/null)
+
+  if [[ -n "$omo_config" ]] && [[ "$omo_config" != "null" ]]; then
+    mkdir -p "$(dirname "$OMO_CONFIG")"
+    echo "$omo_config" | jq '.' > "$OMO_CONFIG"
+    log_info "Updated Oh-My-OpenCode configuration"
+  fi
+
   # Save current preset to state
   set_state_preset "$preset_name"
 
@@ -422,17 +571,17 @@ profile() {
       description=$(jq -r '.description // "No description"' "$profile_file")
       echo -e "${BLUE}Description:${NC} $description"
 
-      if jq -e '.omo.agents' "$profile_file" >/dev/null 2>&1; then
-        echo -e "\n${YELLOW}Defined Agents:${NC}"
-        jq -r '.omo.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$profile_file"
-      fi
+       if jq -e '.agents' "$profile_file" >/dev/null 2>&1; then
+         echo -e "\n${YELLOW}Defined Agents:${NC}"
+         jq -r '.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$profile_file"
+       fi
 
-      if jq -e '.omo.disabled_agents' "$profile_file" >/dev/null 2>&1; then
-        local disabled
-        disabled=$(jq -r '.omo.disabled_agents | join(", ")' "$profile_file")
-        if [[ -z "$disabled" ]]; then disabled="None"; fi
-        echo -e "\n${RED}Disabled Agents:${NC} $disabled"
-      fi
+       if jq -e '.disabled_agents' "$profile_file" >/dev/null 2>&1; then
+         local disabled
+         disabled=$(jq -r '.disabled_agents | join(", ")' "$profile_file")
+         if [[ -z "$disabled" ]]; then disabled="None"; fi
+         echo -e "\n${RED}Disabled Agents:${NC} $disabled"
+       fi
       ;;
     use)
       local profile_name="$1"
@@ -480,6 +629,15 @@ info() {
   if jq -e '.config.omo.agents' "$preset_file" >/dev/null 2>&1; then
     echo -e "\n${YELLOW}Defined Agents:${NC}"
     jq -r '.config.omo.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$preset_file"
+  else
+    echo -e "\n${YELLOW}Defined Agents:${NC} None (uses defaults)"
+  fi
+  
+  # Disabled agents
+  if jq -e '.config.omo.disabled_agents | length > 0' "$preset_file" >/dev/null 2>&1; then
+    local disabled
+    disabled=$(jq -r '.config.omo.disabled_agents | join(", ")' "$preset_file")
+    echo -e "${RED}Disabled Agents:${NC} $disabled"
   fi
   
   # Sisyphus specific
@@ -526,15 +684,27 @@ save() {
     plugins_json=$(jq -c '.plugin // []' "$OPENCODE_CONFIG")
   fi
 
+  # Get current OMO config (full file)
+  local omo_config="{}"
+  if [[ -f "$OMO_CONFIG" ]]; then
+    omo_config=$(jq -c '.' "$OMO_CONFIG" 2>/dev/null || echo "{}")
+  fi
+
   # Create preset JSON
-  cat > "$preset_file" << EOF
-{
-  "name": "$preset_name",
-  "description": "$description",
-  "plugins": $plugins_json,
-  "requires": {}
-}
-EOF
+  jq -n \
+    --arg name "$preset_name" \
+    --arg desc "$description" \
+    --argjson plugins "$plugins_json" \
+    --argjson omo "$omo_config" \
+    '{
+      name: $name,
+      description: $desc,
+      plugins: $plugins,
+      config: {
+        omo: $omo
+      },
+      requires: {}
+    }' > "$preset_file"
 
   log_success "Preset saved: $preset_name"
   log_info "Location: $preset_file"

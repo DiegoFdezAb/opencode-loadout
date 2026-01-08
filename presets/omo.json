@@ -11,12 +11,27 @@
       "plugin": ["oh-my-opencode"]
     },
     "omo": {
+      "$schema": "https://raw.githubusercontent.com/code-yeongyu/oh-my-opencode/master/assets/oh-my-opencode.schema.json",
       "sisyphus_agent": {
         "disabled": false,
         "builder_enabled": false,
         "planner_enabled": true,
         "replace_build": true,
         "replace_plan": true
+      },
+      "agents": {
+        "Sisyphus": {
+          "model": "anthropic/claude-3-5-sonnet",
+          "temperature": 0.7
+        },
+        "explore": {
+          "model": "opencode/grok-code",
+          "temperature": 0.2
+        },
+        "librarian": {
+          "model": "anthropic/claude-3-5-sonnet",
+          "temperature": 0.3
+        }
       }
     }
   }

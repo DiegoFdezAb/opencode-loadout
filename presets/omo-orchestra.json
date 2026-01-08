@@ -12,10 +12,21 @@
       "plugin": ["oh-my-opencode", "opencode-orchestrator"]
     },
     "omo": {
+      "$schema": "https://raw.githubusercontent.com/code-yeongyu/oh-my-opencode/master/assets/oh-my-opencode.schema.json",
       "sisyphus_agent": {
         "disabled": false,
         "builder_enabled": true,
         "planner_enabled": true
+      },
+      "agents": {
+        "Sisyphus": {
+          "model": "anthropic/opus-4.5",
+          "temperature": 0.7
+        },
+        "explore": {
+          "model": "opencode/grok-code",
+          "temperature": 0.2
+        }
       }
     },
     "orchestra": {
