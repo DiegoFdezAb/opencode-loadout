@@ -252,7 +252,7 @@ list_presets() {
 get_current_preset() {
   local state_preset
   state_preset=$(get_state_preset)
-  
+
   # Validate that the state preset matches the actual config
   if [[ "$state_preset" != "none" ]]; then
     local preset_file="$PRESETS_DIR/${state_preset}.json"
@@ -260,13 +260,13 @@ get_current_preset() {
       # Get plugins from preset file
       local preset_plugins
       preset_plugins=$(jq -c '.plugins // []' "$preset_file")
-      
+
       # Get plugins from actual config
       local actual_plugins="[]"
       if [[ -f "$OPENCODE_CONFIG" ]]; then
         actual_plugins=$(jq -c '.plugin // []' "$OPENCODE_CONFIG")
       fi
-      
+
       # Compare
       if [[ "$preset_plugins" != "$actual_plugins" ]]; then
         # Config doesn't match - reset to none
@@ -275,9 +275,27 @@ get_current_preset() {
         echo "none"
         return
       fi
+
+      # If preset expects OMO config, ensure it still matches
+      if jq -e '.config.omo' "$preset_file" >/dev/null 2>&1; then
+        local preset_omo
+        preset_omo=$(jq -c '.config.omo' "$preset_file" 2>/dev/null)
+
+        local actual_omo="{}"
+        if [[ -f "$OMO_CONFIG" ]]; then
+          actual_omo=$(jq -c '.' "$OMO_CONFIG" 2>/dev/null)
+        fi
+
+        if [[ "$preset_omo" != "$actual_omo" ]]; then
+          log_warn "State preset ($state_preset) OMO config doesn't match actual oh-my-opencode.json - resetting to none"
+          set_state_preset "none"
+          echo "none"
+          return
+        fi
+      fi
     fi
   fi
-  
+
   echo "$state_preset"
 }
 
