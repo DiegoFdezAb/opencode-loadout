@@ -99,14 +99,19 @@ has_unsaved_omo_changes() {
   
   # Get saved OMO config from preset
   local saved_omo
-  saved_omo=$(jq -c '.config.omo // {}' "$preset_file" 2>/dev/null)
-  
+  saved_omo=$(jq -c '.config.omo // empty' "$preset_file" 2>/dev/null)
+
+  # If the current preset doesn't store OMO config (legacy preset), don't prompt
+  if [[ -z "$saved_omo" ]] || [[ "$saved_omo" == "null" ]]; then
+    return 1
+  fi
+
   # Get current OMO config
   local current_omo="{}"
   if [[ -f "$OMO_CONFIG" ]]; then
     current_omo=$(jq -c '.' "$OMO_CONFIG" 2>/dev/null)
   fi
-  
+
   # Compare
   if [[ "$saved_omo" != "$current_omo" ]]; then
     return 0  # Has changes
