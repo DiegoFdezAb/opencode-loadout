@@ -84,7 +84,7 @@ has_unsaved_omo_changes() {
     # Check if there's any OMO config at all
     if [[ -f "$OMO_CONFIG" ]]; then
       local current_omo
-      current_omo=$(jq -c '.omo // {}' "$OMO_CONFIG" 2>/dev/null)
+      current_omo=$(jq -c '.' "$OMO_CONFIG" 2>/dev/null)
       if [[ -n "$current_omo" ]] && [[ "$current_omo" != "{}" ]] && [[ "$current_omo" != "null" ]]; then
         return 0  # Has unsaved changes
       fi
@@ -104,7 +104,7 @@ has_unsaved_omo_changes() {
   # Get current OMO config
   local current_omo="{}"
   if [[ -f "$OMO_CONFIG" ]]; then
-    current_omo=$(jq -c '.omo // {}' "$OMO_CONFIG" 2>/dev/null)
+    current_omo=$(jq -c '.' "$OMO_CONFIG" 2>/dev/null)
   fi
   
   # Compare
@@ -130,7 +130,7 @@ show_omo_diff() {
   
   local current_agents="{}"
   if [[ -f "$OMO_CONFIG" ]]; then
-    current_agents=$(jq -c '.omo.agents // {}' "$OMO_CONFIG" 2>/dev/null)
+    current_agents=$(jq -c '.agents // {}' "$OMO_CONFIG" 2>/dev/null)
   fi
   
   echo -e "${YELLOW}Agent differences detected:${NC}"
@@ -308,13 +308,13 @@ current() {
   local omo_local=".opencode/oh-my-opencode.json"
   if [[ -f "$omo_local" ]]; then
     echo -e "\n${GREEN}[LOCAL PROFILE ACTIVE]${NC} (overrides global settings)"
-    if jq -e '.omo.agents' "$omo_local" >/dev/null 2>&1; then
+    if jq -e '.agents' "$omo_local" >/dev/null 2>&1; then
       echo -e "${YELLOW}Defined Agents (Local):${NC}"
-      jq -r '.omo.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$omo_local"
+      jq -r '.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$omo_local"
     fi
-    if jq -e '.omo.disabled_agents' "$omo_local" >/dev/null 2>&1; then
+    if jq -e '.disabled_agents' "$omo_local" >/dev/null 2>&1; then
       local disabled
-      disabled=$(jq -r '.omo.disabled_agents | join(", ")' "$omo_local")
+      disabled=$(jq -r '.disabled_agents | join(", ")' "$omo_local")
       [[ -n "$disabled" ]] && echo -e "${RED}Disabled Agents (Local):${NC} $disabled"
     fi
   elif [[ "$current" != "none" ]]; then
@@ -332,13 +332,13 @@ current() {
     fi
   elif [[ -f "$OMO_CONFIG" ]]; then
     # No preset active but global OMO config exists
-    if jq -e '.omo.agents' "$OMO_CONFIG" >/dev/null 2>&1; then
+    if jq -e '.agents' "$OMO_CONFIG" >/dev/null 2>&1; then
       echo -e "\n${YELLOW}Defined Agents (global, unsaved):${NC}"
-      jq -r '.omo.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$OMO_CONFIG"
+      jq -r '.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$OMO_CONFIG"
     fi
-    if jq -e '.omo.disabled_agents' "$OMO_CONFIG" >/dev/null 2>&1; then
+    if jq -e '.disabled_agents' "$OMO_CONFIG" >/dev/null 2>&1; then
       local disabled
-      disabled=$(jq -r '.omo.disabled_agents | join(", ")' "$OMO_CONFIG")
+      disabled=$(jq -r '.disabled_agents | join(", ")' "$OMO_CONFIG")
       [[ -n "$disabled" ]] && echo -e "${RED}Disabled Agents:${NC} $disabled"
     fi
   fi
@@ -465,13 +465,13 @@ switch() {
     mv "${OPENCODE_CONFIG}.tmp" "$OPENCODE_CONFIG"
   fi
 
-  # Update Oh-My-OpenCode config
+  # Update Oh-My-OpenCode config (write full file from preset)
   local omo_config
-  omo_config=$(jq -c '.config.omo // empty' "$preset_file")
-  
+  omo_config=$(jq -c '.config.omo // empty' "$preset_file" 2>/dev/null)
+
   if [[ -n "$omo_config" ]] && [[ "$omo_config" != "null" ]]; then
     mkdir -p "$(dirname "$OMO_CONFIG")"
-    echo "{ \"omo\": $omo_config }" | jq '.' > "$OMO_CONFIG"
+    echo "$omo_config" | jq '.' > "$OMO_CONFIG"
     log_info "Updated Oh-My-OpenCode configuration"
   fi
 
@@ -539,17 +539,17 @@ profile() {
       description=$(jq -r '.description // "No description"' "$profile_file")
       echo -e "${BLUE}Description:${NC} $description"
 
-      if jq -e '.omo.agents' "$profile_file" >/dev/null 2>&1; then
-        echo -e "\n${YELLOW}Defined Agents:${NC}"
-        jq -r '.omo.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$profile_file"
-      fi
+       if jq -e '.agents' "$profile_file" >/dev/null 2>&1; then
+         echo -e "\n${YELLOW}Defined Agents:${NC}"
+         jq -r '.agents | to_entries[] | "  - \(.key): \(.value.model) (temp: \(.value.temperature // "0.7"))"' "$profile_file"
+       fi
 
-      if jq -e '.omo.disabled_agents' "$profile_file" >/dev/null 2>&1; then
-        local disabled
-        disabled=$(jq -r '.omo.disabled_agents | join(", ")' "$profile_file")
-        if [[ -z "$disabled" ]]; then disabled="None"; fi
-        echo -e "\n${RED}Disabled Agents:${NC} $disabled"
-      fi
+       if jq -e '.disabled_agents' "$profile_file" >/dev/null 2>&1; then
+         local disabled
+         disabled=$(jq -r '.disabled_agents | join(", ")' "$profile_file")
+         if [[ -z "$disabled" ]]; then disabled="None"; fi
+         echo -e "\n${RED}Disabled Agents:${NC} $disabled"
+       fi
       ;;
     use)
       local profile_name="$1"
@@ -652,10 +652,10 @@ save() {
     plugins_json=$(jq -c '.plugin // []' "$OPENCODE_CONFIG")
   fi
 
-  # Get current OMO config
+  # Get current OMO config (full file)
   local omo_config="{}"
   if [[ -f "$OMO_CONFIG" ]]; then
-    omo_config=$(jq -c '.omo // {}' "$OMO_CONFIG")
+    omo_config=$(jq -c '.' "$OMO_CONFIG" 2>/dev/null || echo "{}")
   fi
 
   # Create preset JSON
